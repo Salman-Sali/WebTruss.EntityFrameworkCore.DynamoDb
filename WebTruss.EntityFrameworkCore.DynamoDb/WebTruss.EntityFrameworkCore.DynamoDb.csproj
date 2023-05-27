@@ -1,0 +1,19 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFrameworks>net6.0;net7.0</TargetFrameworks>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+
+		<Version>0.0.1</Version>
+		<Authors>Salman Sali</Authors>
+		<PackageProjectUrl>https://webtruss.salmansali.com</PackageProjectUrl>
+		<Description>IN DEVELOPMENT.DO NOT USE. Wrapper around AWSSDK.DynamoDBv2 to mimic entity framework plus other features.</Description>
+
+	</PropertyGroup>
+
+	<ItemGroup>
+	  <PackageReference Include="AWSSDK.DynamoDBv2" Version="3.7.103.11" />
+	</ItemGroup>
+
+</Project>
