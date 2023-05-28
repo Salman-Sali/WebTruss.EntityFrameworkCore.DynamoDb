@@ -1,14 +1,15 @@
 ﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using System.Reflection;
+using System.Runtime.Serialization;
+using System.Security.Cryptography;
 using WebTruss.EntityFrameworkCore.DynamoDb.Attributes;
 
 namespace WebTruss.EntityFrameworkCore.DynamoDb
 {
-    public class DynamoSet<T>
+    public class DynamoSet<T> : IDynoSour
     {
         private readonly string tableName;
-        private readonly AmazonDynamoDBClient client;
         private readonly DynamoDbContext context;
         public List<Tracking<T>> entities;
         private PropertyInfo? pkProperty;
@@ -38,6 +39,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                 throw new Exception($"Property with Pk attribute not found for entity {typeof(T).Name}.");
             }
 
+            propertyNames = new Dictionary<PropertyInfo, string>();
             foreach (var property in typeof(T).GetProperties())
             {
                 var dynamoPropertyName = property.GetCustomAttribute<DynamoPropertyName>();
@@ -51,69 +53,105 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                 }
             }
 
+            entities = new List<Tracking<T>>();
         }
 
-
-
-
-        private void CheckPkType(Type t)
+        public void Add(T entity)
         {
-            if (pkProperty.PropertyType != t)
+            entities.Add(new Tracking<T>(entity, EntityState.Added));
+        }
+
+        public void Update(T entity)
+        {
+            entities.Add(new Tracking<T>(entity, EntityState.Modified));
+        }
+
+        public void Delete(T entity)
+        {
+            entities.Add(new Tracking<T>(entity, EntityState.Deleted));
+        }
+
+        public void Delete<Tid>(Tid pkId)
+        {
+            CheckType(pkProperty, typeof(Tid), DynamoDbKey.Pk);
+            var data = (T)Activator.CreateInstance(typeof(T));
+            pkProperty.SetValue(data, pkId);
+            entities.Add(new Tracking<T>(data, EntityState.Deleted));
+        }
+
+        public void Delete<Pid, Sid>(Pid pk, Sid sk)
+        {
+            CheckType(pkProperty, typeof(Pid), DynamoDbKey.Pk);
+            CheckType(skProperty, typeof(Sid), DynamoDbKey.Sk);
+
+            var data = (T)Activator.CreateInstance(typeof(T));
+            pkProperty.SetValue(data, pk);
+            skProperty.SetValue(data, sk);
+
+            entities.Add(new Tracking<T>(data, EntityState.Deleted));
+        }
+
+        private void CheckType(PropertyInfo? property, Type t, DynamoDbKey key)
+        {
+            if (property == null)
             {
-                throw new Exception($"{typeof(T).Name} contains pk (Primary key) with type of {pkProperty.Name}. You have provided {t.Name}.");
+                throw new Exception($"{typeof(T).Name} does not contain a property with {key.ToString()}.");
+            }
+
+            if (property.PropertyType != t)
+            {
+                throw new Exception($"{typeof(T).Name} contains {key.ToString()} {property.Name} with type of {property.PropertyType.Name}. You have provided {t.Name}.");
             }
         }
 
-        private void CheckPkAndSkType(Type pk, Type sk)
+        public async Task<T?> FirstOrDefaultAsync<Tid>(Tid pk)
         {
-            if(skProperty == null)
+            CheckType(pkProperty, typeof(Tid), DynamoDbKey.Pk);
+            var pkAttributeValue = new AttributeValue();
+            if (typeof(Tid) == typeof(int))
             {
-                throw new Exception($"The model {typeof(T).Name} does not have a property with Sk (Secondary Key) attribute.");
+                pkAttributeValue.N = pk.ToString();
             }
-            if(pkProperty.PropertyType != pk || skProperty.PropertyType != sk)
+            else if (typeof(Tid) == typeof(string))
             {
-                throw new Exception($"{typeof(T).Name} contains Pk (Primary key) of type {pkProperty.Name} and Sk (Secondary key) of type {skProperty.Name}. You have provided Pk of type {pk.Name} and Sk of type {sk.Name}.");
+                pkAttributeValue.S = pk.ToString();
             }
-        }
-
-        public async Task<T?> FirstOrDefaultAsync(int pk)
-        {
-            CheckPkType(typeof(int));
             var keys = new Dictionary<string, AttributeValue>
             {
-                { propertyNames.Where(a=>a.Key == pkProperty).First().Value, new AttributeValue{ N = pk.ToString() } }
+                { propertyNames.Where(a=>a.Key == pkProperty).First().Value, pkAttributeValue }
             };
             return await GetByKeysAsync(keys);
         }
 
-        public async Task<T?> FirstOrDefaultAsync(string pk)
+        public async Task<T?> FirstOrDefaultAsync<Pid, Sid>(Pid pk, Sid sk)
         {
-            CheckPkType(typeof(string));
-            var keys = new Dictionary<string, AttributeValue>
-            {
-                { propertyNames.Where(a=>a.Key == pkProperty).First().Value, new AttributeValue{ S = pk } }
-            };
-            return await GetByKeysAsync(keys);
-        }
+            CheckType(pkProperty, typeof(Pid), DynamoDbKey.Pk);
+            CheckType(skProperty, typeof(Sid), DynamoDbKey.Sk);
 
-        public async Task<T?> FirstOrDefaultAsync(int pk, int sk)
-        {
-            CheckPkAndSkType(typeof(int), typeof(int));
-            var keys = new Dictionary<string, AttributeValue>
+            var pkAttributeValue = new AttributeValue();
+            if (typeof(Pid) == typeof(int))
             {
-                { propertyNames.Where(a=>a.Key == pkProperty).First().Value, new AttributeValue{ N = pk.ToString() } },
-                { propertyNames.Where(a=>a.Key == skProperty).First().Value, new AttributeValue{ N = sk.ToString() } }
-            };
-            return await GetByKeysAsync(keys);
-        }
+                pkAttributeValue.N = pk.ToString();
+            }
+            else if (typeof(Pid) == typeof(string))
+            {
+                pkAttributeValue.S = pk.ToString();
+            }
 
-        public async Task<T?> FirstOrDefaultAsync(string pk, string sk)
-        {
-            CheckPkAndSkType(typeof(string), typeof(string));
+            var skAttributeValue = new AttributeValue();
+            if (typeof(Sid) == typeof(int))
+            {
+                skAttributeValue.N = sk.ToString();
+            }
+            else if (typeof(Sid) == typeof(string))
+            {
+                skAttributeValue.S = sk.ToString();
+            }
+
             var keys = new Dictionary<string, AttributeValue>
             {
-                { propertyNames.Where(a=>a.Key == pkProperty).First().Value, new AttributeValue{ N = pk } },
-                { propertyNames.Where(a=>a.Key == skProperty).First().Value, new AttributeValue{ N = sk } }
+                { propertyNames.Where(a=>a.Key == pkProperty).First().Value, pkAttributeValue },
+                { propertyNames.Where(a=>a.Key == skProperty).First().Value, skAttributeValue }
             };
             return await GetByKeysAsync(keys);
         }
@@ -126,25 +164,34 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                 Key = keys
             };
 
-            var response = await client.GetItemAsync(request);
+            var response = await context.Client.GetItemAsync(request);
             if (response.HttpStatusCode != System.Net.HttpStatusCode.OK)
             {
                 return default(T);
             }
 
             var data = (T)Activator.CreateInstance(typeof(T));
-            foreach (var property in typeof(T).GetProperties())
+            foreach (var property in propertyNames)
             {
-                var value = Activator.CreateInstance(property.GetType());
-                if (!response.Item.Where(x => x.Key == property.Name).Any())
+                if (!response.Item.Where(x => x.Key == property.Value).Any())
                 {
                     continue;
                 }
-                value = response.Item.Where(x => x.Key == property.Name).FirstOrDefault().Value;
-                property.SetValue(data, value);
+
+                object? value = null;
+                if (property.Key.PropertyType == typeof(string))
+                {
+                    value = response.Item.Where(x => x.Key == property.Value).FirstOrDefault().Value.S;
+                }
+                property.Key.SetValue(data, value);
             }
             entities.Add(new Tracking<T>(data, EntityState.Unchanged));
             return data;
+        }
+
+        public void SaveChangesAsync()
+        {
+            throw new NotImplementedException();
         }
     }
 }

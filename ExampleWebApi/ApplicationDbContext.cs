@@ -1,18 +1,25 @@
-﻿using WebTruss.EntityFrameworkCore.DynamoDb;
+﻿using Amazon;
+using ExampleWebApi.Configurations;
+using WebTruss.EntityFrameworkCore.DynamoDb;
 
 namespace ExampleWebApi
 {
     public class ApplicationDbContext : DynamoDbContext
     {
-        public ApplicationDbContext() 
+        public ApplicationDbContext(AWSConfiguration aWSConfiguration, DynamoDbTablesConfiguration dynamoDbTablesConfiguration) 
         {
-            Client = new Amazon.DynamoDBv2.AmazonDynamoDBClient();
-            Tables = new Dictionary<Type, string>
+            base.Client = new Amazon.DynamoDBv2.AmazonDynamoDBClient(aWSConfiguration.AccessKeyId, 
+                aWSConfiguration.SecretKey, 
+                RegionEndpoint.GetBySystemName(aWSConfiguration.Region));
+
+            base.Tables = new Dictionary<Type, string>
             {
-                { typeof(Employee), "Employees" }
+                { typeof(Employee), dynamoDbTablesConfiguration.Employees }
             };
+
+            Employees = new DynamoSet<Employee>(this);
         }
 
-        public DynamoSet<Employee> Employees => new DynamoSet<Employee>(this);
+        public DynamoSet<Employee> Employees { get; set; }
     }
 }
