@@ -2,6 +2,6 @@
 {
     public interface IDynoSour
     {
-        void SaveChangesAsync();
+        Task SaveChangesAsync();
     }
 }

@@ -1,14 +1,15 @@
 ﻿using Amazon.DynamoDBv2;
+using System.Reflection;
 
 namespace WebTruss.EntityFrameworkCore.DynamoDb
 {
     public class DynamoDbContext : IDynoSour
     {
-        public AmazonDynamoDBClient Client { get; set; }
-        public Dictionary<Type, string> Tables { get; set; }
+        public AmazonDynamoDBClient Client { get; set; } = null!;
+        public Dictionary<Type, string> Tables { get; set; } = null!;
         public string? MetaDataTable { get; set; }
 
-        public void SaveChangesAsync()
+        public async Task SaveChangesAsync()
         {
             var dynamoSets = this.GetType()
                 .GetProperties()
@@ -19,8 +20,8 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             foreach (var dynamoSet in dynamoSets)
             {
                 var  value = dynamoSet.GetValue(this);
-                var method = typeof(IDynoSour).GetMethod("SaveChangesAsync");
-                method.Invoke(value, null);
+                MethodInfo method = typeof(IDynoSour).GetMethod("SaveChangesAsync")!;
+                await (Task)method.Invoke(value, null)!;
             }
         }
     }

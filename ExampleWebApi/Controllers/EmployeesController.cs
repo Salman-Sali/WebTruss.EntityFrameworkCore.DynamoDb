@@ -18,8 +18,8 @@ namespace ExampleWebApi.Controllers
         public async Task<IActionResult> GetEmployeeById()
         {
             var data = await context.Employees.FirstOrDefaultAsync("Emp-1");
-            data.Name = "Hello";
-            context.SaveChangesAsync();
+            //data.Name = "Hello";
+            await context.SaveChangesAsync();
 
             return this.Ok(data);
         }

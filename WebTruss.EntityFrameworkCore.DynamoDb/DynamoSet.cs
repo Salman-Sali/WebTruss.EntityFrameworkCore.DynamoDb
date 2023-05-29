@@ -1,5 +1,6 @@
 ﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Security.Cryptography;
@@ -7,7 +8,7 @@ using WebTruss.EntityFrameworkCore.DynamoDb.Attributes;
 
 namespace WebTruss.EntityFrameworkCore.DynamoDb
 {
-    public class DynamoSet<T> : IDynoSour
+    public class DynamoSet<T> : IDynoSour where T : class
     {
         private readonly string tableName;
         private readonly DynamoDbContext context;
@@ -189,9 +190,18 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             return data;
         }
 
-        public void SaveChangesAsync()
+        private bool HasValueChanged(T entity, T original) 
         {
-            throw new NotImplementedException();
+            return entity != original;
+        }
+
+        public async Task SaveChangesAsync()
+        {
+            entities
+                .Where(x=> x.EntityState == EntityState.Unchanged && HasValueChanged(x.Entity,x.Original))
+                .ToList()
+                .ForEach(x=> x.EntityState = EntityState.Modified);
+            await Task.CompletedTask;
         }
     }
 }
