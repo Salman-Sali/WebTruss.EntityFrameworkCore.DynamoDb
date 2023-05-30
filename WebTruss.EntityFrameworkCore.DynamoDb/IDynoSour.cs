@@ -2,6 +2,6 @@
 {
     public interface IDynoSour
     {
-        Task SaveChangesAsync();
+        Task SaveChangesAsync(CancellationToken cancellationToken = default);
     }
 }

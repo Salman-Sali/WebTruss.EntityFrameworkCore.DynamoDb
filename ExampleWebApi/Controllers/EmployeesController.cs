@@ -15,13 +15,40 @@ namespace ExampleWebApi.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetEmployeeById()
+        public async Task<IActionResult> GetEmployeeById(string id)
         {
-            var data = await context.Employees.FirstOrDefaultAsync("Emp-1");
-            //data.Name = "Hello";
-            await context.SaveChangesAsync();
+            var employee = await context.Employees.FirstOrDefaultAsync(id);
+            if (employee == null)
+            {
+                return this.NotFound();
+            }
+            return this.Ok(employee);
+        }
 
-            return this.Ok(data);
+        [HttpPost]
+        public async Task<IActionResult> AddEmployee(string id, string name)
+        {
+            var employee = new Employee
+            {
+                Id = id,
+                Name = name,
+            };
+            context.Employees.Add(employee);
+            await context.SaveChangesAsync();
+            return this.Ok();
+        }
+
+        [HttpPut]
+        public async Task<IActionResult> UpdateEmployee(string id, string name)
+        {
+            var employee = await context.Employees.FirstOrDefaultAsync(id);
+            if(employee == null) 
+            { 
+                return this.NotFound();
+            }
+            employee.Name = name;
+            await context.SaveChangesAsync();
+            return this.Ok();
         }
     }
 }

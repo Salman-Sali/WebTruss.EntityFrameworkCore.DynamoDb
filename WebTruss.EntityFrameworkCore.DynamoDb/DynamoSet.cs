@@ -1,9 +1,7 @@
-﻿using Amazon.DynamoDBv2;
-using Amazon.DynamoDBv2.Model;
-using System.Collections.Generic;
+﻿using Amazon.DynamoDBv2.Model;
+using Amazon.Runtime;
+using KellermanSoftware.CompareNetObjects;
 using System.Reflection;
-using System.Runtime.Serialization;
-using System.Security.Cryptography;
 using WebTruss.EntityFrameworkCore.DynamoDb.Attributes;
 
 namespace WebTruss.EntityFrameworkCore.DynamoDb
@@ -57,21 +55,38 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             entities = new List<Tracking<T>>();
         }
 
+        /// <summary>
+        /// Starts tracking entity to be added.
+        /// </summary>
+        /// <param name="entity"></param>
         public void Add(T entity)
         {
             entities.Add(new Tracking<T>(entity, EntityState.Added));
         }
 
+        /// <summary>
+        /// Starts tracking entity to be updated
+        /// </summary>
+        /// <param name="entity"></param>
         public void Update(T entity)
         {
             entities.Add(new Tracking<T>(entity, EntityState.Modified));
         }
 
+        /// <summary>
+        /// Starts tracking entity to be deleted.
+        /// </summary>
+        /// <param name="entity"></param>
         public void Delete(T entity)
         {
             entities.Add(new Tracking<T>(entity, EntityState.Deleted));
         }
 
+        /// <summary>
+        /// Starts tracking entity to be deleted.
+        /// </summary>
+        /// <typeparam name="Tid"></typeparam>
+        /// <param name="pkId"></param>
         public void Delete<Tid>(Tid pkId)
         {
             CheckType(pkProperty, typeof(Tid), DynamoDbKey.Pk);
@@ -80,6 +95,14 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             entities.Add(new Tracking<T>(data, EntityState.Deleted));
         }
 
+
+        /// <summary>
+        /// Starts tracking entity to be deleted.
+        /// </summary>
+        /// <typeparam name="Pid"></typeparam>
+        /// <typeparam name="Sid"></typeparam>
+        /// <param name="pk"></param>
+        /// <param name="sk"></param>
         public void Delete<Pid, Sid>(Pid pk, Sid sk)
         {
             CheckType(pkProperty, typeof(Pid), DynamoDbKey.Pk);
@@ -168,7 +191,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             var response = await context.Client.GetItemAsync(request);
             if (response.HttpStatusCode != System.Net.HttpStatusCode.OK)
             {
-                return default(T);
+                return null;
             }
 
             var data = (T)Activator.CreateInstance(typeof(T));
@@ -190,18 +213,102 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             return data;
         }
 
-        private bool HasValueChanged(T entity, T original) 
+        private bool HasValueChanged(T entity, T original)
         {
-            return entity != original;
+            CompareLogic compareLogic = new CompareLogic();
+
+            ComparisonResult result = compareLogic.Compare(entity, original);
+            return !result.AreEqual;
         }
 
-        public async Task SaveChangesAsync()
+        /// <summary>
+        /// Saves currently tracking changes. Tracking will stop once saved.
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             entities
-                .Where(x=> x.EntityState == EntityState.Unchanged && HasValueChanged(x.Entity,x.Original))
+                .Where(x => x.EntityState == EntityState.Unchanged && HasValueChanged(x.Entity, x.Original))
                 .ToList()
-                .ForEach(x=> x.EntityState = EntityState.Modified);
-            await Task.CompletedTask;
+                .ForEach(x => x.EntityState = EntityState.Modified);
+
+            foreach (var entity in entities.Where(x => x.EntityState == EntityState.Deleted).ToList())
+            {
+                await ExecuteDeleteAsync(entity.Original);
+            }
+
+            foreach (var entity in entities.Where(x => x.EntityState == EntityState.Added || x.EntityState == EntityState.Modified).ToList())
+            {
+                await ExecutePutAsync(entity.Entity);
+            }
+            entities = new List<Tracking<T>>();
+        }
+
+        /// <summary>
+        /// Add or update entity without tracking.
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task<bool> ExecutePutAsync(T entity, CancellationToken cancellationToken = default)
+        {
+            var item = new Dictionary<string, AttributeValue>();
+            var properties = typeof(T).GetProperties();
+            foreach (var property in propertyNames)
+            {
+                var value = property.Key.GetValue(entity);
+                if (value == null)
+                {
+                    continue;
+                }
+                item.Add(property.Value, new AttributeValue(value.ToString()));
+            }
+            var request = new PutItemRequest
+            {
+                TableName = tableName,
+                Item = item
+            };
+
+            var result = await context.Client.PutItemAsync(request, cancellationToken);
+            return result.HttpStatusCode == System.Net.HttpStatusCode.OK;
+        }
+
+        /// <summary>
+        /// Delete entity without tracking.
+        /// </summary>
+        /// <param name="entity"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task<bool> ExecuteDeleteAsync(T entity, CancellationToken cancellationToken = default)
+        {
+            var keys = new Dictionary<string, AttributeValue>();
+            var pk = new AttributeValue();
+            if (pkProperty.PropertyType == typeof(string))
+            {
+                pk.S = (string)pkProperty.GetValue(entity);
+            }
+            else if (pkProperty.PropertyType == typeof(int))
+            {
+                pk.N = (string)pkProperty.GetValue(entity);
+            }
+            keys.Add(propertyNames.Where(x=>x.Key == pkProperty).First().Value, pk);
+
+            if (skProperty != null)
+            {
+                var sk = new AttributeValue();
+                if (skProperty.PropertyType == typeof(string))
+                {
+                    sk.S = (string)skProperty.GetValue(entity);
+                }
+                else if (skProperty.PropertyType == typeof(int))
+                {
+                    sk.N = (string)skProperty.GetValue(entity);
+                }
+                keys.Add(propertyNames.Where(x => x.Key == skProperty).First().Value, sk);
+            }
+            var result = await context.Client.DeleteItemAsync(tableName, keys, cancellationToken);
+            return result.HttpStatusCode == System.Net.HttpStatusCode.OK;
         }
     }
 }
