@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Amazon.DynamoDBv2.Model;
+using Amazon.DynamoDBv2;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ExampleWebApi.Controllers
@@ -14,7 +16,7 @@ namespace ExampleWebApi.Controllers
             this.context = context;
         }
 
-        [HttpGet]
+        [HttpGet("{id}")]
         public async Task<IActionResult> GetEmployeeById(string id)
         {
             var employee = await context.Employees.FirstOrDefaultAsync(id);
@@ -23,6 +25,12 @@ namespace ExampleWebApi.Controllers
                 return this.NotFound();
             }
             return this.Ok(employee);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetEmployees(int limit, string? paginationToken)
+        {
+            return this.Ok(await context.Employees.TakeAsync(limit, paginationToken));
         }
 
         [HttpPost]

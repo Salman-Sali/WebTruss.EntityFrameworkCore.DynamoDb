@@ -1,6 +1,10 @@
-﻿using Amazon.DynamoDBv2.Model;
+﻿using Amazon.Auth.AccessControlPolicy;
+using Amazon.DynamoDBv2.DocumentModel;
+using Amazon.DynamoDBv2.Model;
 using Amazon.Runtime;
 using KellermanSoftware.CompareNetObjects;
+using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Reflection;
 using WebTruss.EntityFrameworkCore.DynamoDb.Attributes;
 
@@ -309,6 +313,63 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             }
             var result = await context.Client.DeleteItemAsync(tableName, keys, cancellationToken);
             return result.HttpStatusCode == System.Net.HttpStatusCode.OK;
+        }
+
+        public async Task<PaginatedResult<T>> TakeAsync(int count, string? paginationToken = null, QueryFilter? filter = null)
+        {
+            var table = Table.LoadTable(context.Client, tableName);
+            Search search = table.Scan(new ScanOperationConfig
+            {
+                ConsistentRead = true,
+                Limit = count,
+                Select = SelectValues.AllAttributes,
+                PaginationToken = paginationToken
+            });
+            var searchResult = await search.GetNextSetAsync();
+            var result = new PaginatedResult<T>();
+            result.PaginationToken = search.PaginationToken;
+            foreach (var item in searchResult)
+            {
+                var data = (T)Activator.CreateInstance(typeof(T));
+                foreach (var property in propertyNames)
+                {
+                    var value = Activator.CreateInstance(property.GetType());
+                    if (!item.Where(x => x.Key == property.Value).Any())
+                    {
+                        continue;
+                    }
+                    var itemValue = item.Where(x => x.Key == property.Value).FirstOrDefault().Value;
+                    var type = property.Value.GetType();
+                    if (type == typeof(string))
+                    {
+                        value = itemValue.AsString();
+                    }else if (type == typeof(int))
+                    {
+                        value = itemValue.AsInt();
+                    }
+                    property.Key.SetValue(data, value);
+                }
+                result.Items.Add(data);
+            }
+            return result;
+        }
+
+        public DynamnoQuery<T> Where(Expression<Func<T, bool>> predicate)
+        {
+            return new DynamnoQuery<T>();
+        }
+
+        public DynamnoQuery<T> Select(Expression<Func<T, T>> predicate)
+        {
+            return new DynamnoQuery<T>();
+        }
+
+        public class DynamnoQuery<T>
+        {
+            public void ToList()
+            {
+
+            }
         }
     }
 }
