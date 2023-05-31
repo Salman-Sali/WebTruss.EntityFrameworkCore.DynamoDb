@@ -1,0 +1,1 @@
+# WebTruss.EntityFrameworkCore.DynamoDb
