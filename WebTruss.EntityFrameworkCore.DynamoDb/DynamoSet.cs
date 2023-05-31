@@ -315,7 +315,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             return result.HttpStatusCode == System.Net.HttpStatusCode.OK;
         }
 
-        public async Task<PaginatedResult<T>> TakeAsync(int count, string? paginationToken = null, QueryFilter? filter = null)
+        public async Task<PaginatedResult<T>> ScanAsync(int count, string? paginationToken = null, QueryFilter? filter = null)
         {
             var table = Table.LoadTable(context.Client, tableName);
             Search search = table.Scan(new ScanOperationConfig
@@ -354,22 +354,30 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             return result;
         }
 
-        public DynamnoQuery<T> Where(Expression<Func<T, bool>> predicate)
-        {
-            return new DynamnoQuery<T>();
-        }
+        //public DynamnoQuery<T> Where(Expression<Func<T, bool>> predicate)
+        //{
+        //    return new DynamnoQuery<T>(this.context);
+        //}
 
-        public DynamnoQuery<T> Select(Expression<Func<T, T>> predicate)
-        {
-            return new DynamnoQuery<T>();
-        }
+        //public DynamnoQuery<T> Select<TResult>(Expression<Func<T, TResult>> selector)
+        //{
 
-        public class DynamnoQuery<T>
-        {
-            public void ToList()
-            {
+        //    return new DynamnoQuery<T>(this.context);
+        //}
 
-            }
-        }
+        //public class DynamnoQuery<T>
+        //{
+        //    private readonly DynamoDbContext context;
+
+        //    public DynamnoQuery(DynamoDbContext context)
+        //    {
+        //        this.context = context;
+        //    }
+
+        //    public void ToList()
+        //    {
+                
+        //    }
+        //}
     }
 }

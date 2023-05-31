@@ -30,7 +30,7 @@ namespace ExampleWebApi.Controllers
         [HttpGet]
         public async Task<IActionResult> GetEmployees(int limit, string? paginationToken)
         {
-            return this.Ok(await context.Employees.TakeAsync(limit, paginationToken));
+            return this.Ok(await context.Employees.ScanAsync(limit, paginationToken));
         }
 
         [HttpPost]
