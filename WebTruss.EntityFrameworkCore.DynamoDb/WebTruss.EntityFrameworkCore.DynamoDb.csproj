@@ -8,7 +8,7 @@
 		<Version>0.0.1</Version>
 		<Authors>Salman Sali</Authors>
 		<PackageProjectUrl>https://webtruss.salmansali.com</PackageProjectUrl>
-		<Description>IN DEVELOPMENT.DO NOT USE. Wrapper around AWSSDK.DynamoDBv2 to mimic entity framework plus other features.</Description>
+		<Description>Jerry rigged entity framework library for DynamoDb.</Description>
 
 	</PropertyGroup>
 
