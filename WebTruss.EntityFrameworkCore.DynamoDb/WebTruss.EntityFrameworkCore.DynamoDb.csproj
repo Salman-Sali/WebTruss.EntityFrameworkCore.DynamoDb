@@ -7,7 +7,7 @@
 
 		<Version>0.0.1</Version>
 		<Authors>Salman Sali</Authors>
-		<PackageProjectUrl>https://webtruss.salmansali.com</PackageProjectUrl>
+		<PackageProjectUrl>https://github.com/Salman-Sali/WebTruss.EntityFrameworkCore.DynamoDb</PackageProjectUrl>
 		<Description>Jerry rigged entity framework library for DynamoDb.</Description>
 
 	</PropertyGroup>
