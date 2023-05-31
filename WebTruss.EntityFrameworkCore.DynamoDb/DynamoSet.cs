@@ -359,11 +359,13 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
         //    return new DynamnoQuery<T>(this.context);
         //}
 
-        //public DynamnoQuery<T> Select<TResult>(Expression<Func<T, TResult>> selector)
-        //{
-
-        //    return new DynamnoQuery<T>(this.context);
-        //}
+        public void Select<TResult>(Expression<Func<T, TResult>> selector)
+        {
+            var aaa = System.Linq.Expressions.MethodCallExpression.Convert(selector, typeof(TResult));
+            var body = (System.Linq.Expressions.MethodCallExpression)selector.Body;
+            var aa = body.Arguments.Where(x => propertyNames.Select(x => x.Key).Contains(((MemberExpression)x).Member)).FirstOrDefault();
+            return;
+        }
 
         //public class DynamnoQuery<T>
         //{
@@ -376,7 +378,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
 
         //    public void ToList()
         //    {
-                
+
         //    }
         //}
     }
