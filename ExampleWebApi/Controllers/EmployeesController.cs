@@ -14,7 +14,8 @@ namespace ExampleWebApi.Controllers
         public EmployeesController(ApplicationDbContext context)
         {
             this.context = context;
-            context.Employees.Select(x => new { x.Name, x.Id });
+            var a = context.Employees.Select(x => new { x.Name }).FirstOrDefaultAsync("Emp-1").Result;
+            var asdsf = 1;
         }
 
         [HttpGet("{id}")]

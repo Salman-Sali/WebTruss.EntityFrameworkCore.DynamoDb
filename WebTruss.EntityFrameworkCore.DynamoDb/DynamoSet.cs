@@ -6,6 +6,7 @@ using KellermanSoftware.CompareNetObjects;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Xml.Linq;
 using WebTruss.EntityFrameworkCore.DynamoDb.Attributes;
 
 namespace WebTruss.EntityFrameworkCore.DynamoDb
@@ -132,64 +133,58 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             }
         }
 
-        public async Task<T?> FirstOrDefaultAsync<Tid>(Tid pk)
+        private AttributeValue GetAttributeValue<Tid>(Tid id, DynamoDbKey key)
         {
-            CheckType(pkProperty, typeof(Tid), DynamoDbKey.Pk);
-            var pkAttributeValue = new AttributeValue();
+            if (key == DynamoDbKey.Pk)
+            {
+                CheckType(pkProperty, typeof(Tid), DynamoDbKey.Pk);
+            }
+            else
+            {
+                CheckType(skProperty, typeof(Tid), DynamoDbKey.Sk);
+            }
+
+            var attributeValue = new AttributeValue();
+
             if (typeof(Tid) == typeof(int))
             {
-                pkAttributeValue.N = pk.ToString();
+                attributeValue.N = id.ToString();
             }
             else if (typeof(Tid) == typeof(string))
             {
-                pkAttributeValue.S = pk.ToString();
+                attributeValue.S = id.ToString();
             }
+
+            return attributeValue;
+        }
+
+        public async Task<T?> FirstOrDefaultAsync<Tid>(Tid pk)
+        {
             var keys = new Dictionary<string, AttributeValue>
             {
-                { propertyNames.Where(a=>a.Key == pkProperty).First().Value, pkAttributeValue }
+                { propertyNames.Where(a=>a.Key == pkProperty).First().Value, GetAttributeValue(pk, DynamoDbKey.Pk) }
             };
-            return await GetByKeysAsync(keys);
+            return await GetByKeysAsync(keys, propertyNames.Select(x => x.Key).ToList());
         }
 
         public async Task<T?> FirstOrDefaultAsync<Pid, Sid>(Pid pk, Sid sk)
         {
-            CheckType(pkProperty, typeof(Pid), DynamoDbKey.Pk);
-            CheckType(skProperty, typeof(Sid), DynamoDbKey.Sk);
-
-            var pkAttributeValue = new AttributeValue();
-            if (typeof(Pid) == typeof(int))
-            {
-                pkAttributeValue.N = pk.ToString();
-            }
-            else if (typeof(Pid) == typeof(string))
-            {
-                pkAttributeValue.S = pk.ToString();
-            }
-
-            var skAttributeValue = new AttributeValue();
-            if (typeof(Sid) == typeof(int))
-            {
-                skAttributeValue.N = sk.ToString();
-            }
-            else if (typeof(Sid) == typeof(string))
-            {
-                skAttributeValue.S = sk.ToString();
-            }
-
             var keys = new Dictionary<string, AttributeValue>
             {
-                { propertyNames.Where(a=>a.Key == pkProperty).First().Value, pkAttributeValue },
-                { propertyNames.Where(a=>a.Key == skProperty).First().Value, skAttributeValue }
+                { propertyNames.Where(a=>a.Key == pkProperty).First().Value, GetAttributeValue(pk, DynamoDbKey.Pk) },
+                { propertyNames.Where(a=>a.Key == skProperty).First().Value, GetAttributeValue(sk, DynamoDbKey.Sk) }
             };
-            return await GetByKeysAsync(keys);
+            return await GetByKeysAsync(keys, propertyNames.Select(x => x.Key).ToList());
         }
 
-        private async Task<T?> GetByKeysAsync(Dictionary<string, AttributeValue> keys)
+        private async Task<T?> GetByKeysAsync(Dictionary<string, AttributeValue> keys, List<PropertyInfo> properties)
         {
+            var attributesToGet = propertyNames.Where(x => properties.Contains(x.Key)).Select(x => x.Value).ToList();
             var request = new GetItemRequest
             {
                 TableName = tableName,
-                Key = keys
+                Key = keys,
+                AttributesToGet = attributesToGet
             };
 
             var response = await context.Client.GetItemAsync(request);
@@ -257,6 +252,19 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
         /// <returns></returns>
         public async Task<bool> ExecutePutAsync(T entity, CancellationToken cancellationToken = default)
         {
+
+            var request = new PutItemRequest
+            {
+                TableName = tableName,
+                Item = EntityToAttributeValues(entity)
+            };
+
+            var result = await context.Client.PutItemAsync(request, cancellationToken);
+            return result.HttpStatusCode == System.Net.HttpStatusCode.OK;
+        }
+
+        private Dictionary<string, AttributeValue> EntityToAttributeValues(T entity)
+        {
             var item = new Dictionary<string, AttributeValue>();
             var properties = typeof(T).GetProperties();
             foreach (var property in propertyNames)
@@ -268,14 +276,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                 }
                 item.Add(property.Value, new AttributeValue(value.ToString()));
             }
-            var request = new PutItemRequest
-            {
-                TableName = tableName,
-                Item = item
-            };
-
-            var result = await context.Client.PutItemAsync(request, cancellationToken);
-            return result.HttpStatusCode == System.Net.HttpStatusCode.OK;
+            return item;
         }
 
         /// <summary>
@@ -296,7 +297,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             {
                 pk.N = (string)pkProperty.GetValue(entity);
             }
-            keys.Add(propertyNames.Where(x=>x.Key == pkProperty).First().Value, pk);
+            keys.Add(propertyNames.Where(x => x.Key == pkProperty).First().Value, pk);
 
             if (skProperty != null)
             {
@@ -315,6 +316,13 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             return result.HttpStatusCode == System.Net.HttpStatusCode.OK;
         }
 
+        /// <summary>
+        /// List elements of the table. This method performs a dynamodb scan.
+        /// </summary>
+        /// <param name="count"></param>
+        /// <param name="paginationToken"></param>
+        /// <param name="filter"></param>
+        /// <returns></returns>
         public async Task<PaginatedResult<T>> ScanAsync(int count, string? paginationToken = null, QueryFilter? filter = null)
         {
             var table = Table.LoadTable(context.Client, tableName);
@@ -343,7 +351,8 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                     if (type == typeof(string))
                     {
                         value = itemValue.AsString();
-                    }else if (type == typeof(int))
+                    }
+                    else if (type == typeof(int))
                     {
                         value = itemValue.AsInt();
                     }
@@ -354,17 +363,74 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             return result;
         }
 
+        /// <summary>
+        /// Put upto 100 items to the table.
+        /// </summary>
+        /// <param name="entities"></param>
+        /// <returns></returns>
+        public async Task<bool> ExecuteAdd100Async(List<T> entities, CancellationToken cancellationToken = default)
+        {
+            if(entities.Count() > 100)
+            {
+                throw new Exception("ExecutePut100Async can only handle 100 entities at a time.");
+            }
+
+            var items = new List<TransactWriteItem>();
+            foreach (var entity in entities)
+            {
+                items.Add(new TransactWriteItem
+                {
+                    Put = new Put
+                    {
+                        TableName = this.tableName,
+                        Item = EntityToAttributeValues(entity)
+                    }
+                });
+            }
+
+            var request = new TransactWriteItemsRequest
+            {
+                TransactItems = items,
+            };
+            var result = await context.Client.TransactWriteItemsAsync(request);
+            return result.HttpStatusCode == System.Net.HttpStatusCode.OK;
+        }
+
         //public DynamnoQuery<T> Where(Expression<Func<T, bool>> predicate)
         //{
         //    return new DynamnoQuery<T>(this.context);
         //}
 
-        public void Select<TResult>(Expression<Func<T, TResult>> selector)
+        public DynamoSelection Select<TResult>(Expression<Func<T, TResult>> selector)
         {
-            var aaa = System.Linq.Expressions.MethodCallExpression.Convert(selector, typeof(TResult));
-            var body = (System.Linq.Expressions.MethodCallExpression)selector.Body;
-            var aa = body.Arguments.Where(x => propertyNames.Select(x => x.Key).Contains(((MemberExpression)x).Member)).FirstOrDefault();
-            return;
+            List<PropertyInfo> properties = new();
+            foreach (var property in ((System.Linq.Expressions.NewExpression)selector.Body).Members)
+            {
+                properties.Add(propertyNames.Where(x => x.Key.Name == property.Name).First().Key);
+            }
+            return new DynamoSelection(this, properties);
+        }
+
+        public class DynamoSelection
+        {
+            private readonly DynamoSet<T> dynamoSet;
+
+            public DynamoSelection(DynamoSet<T> dynamoSet, List<PropertyInfo> properties)
+            {
+                this.dynamoSet = dynamoSet;
+                selectedProperties = properties;
+            }
+
+            public List<PropertyInfo> selectedProperties { get; set; }
+
+            public async Task<T?> FirstOrDefaultAsync<Tid>(Tid pk)
+            {
+                var keys = new Dictionary<string, AttributeValue> 
+                { 
+                    { dynamoSet.propertyNames.Where(a=>a.Key == dynamoSet.pkProperty).First().Value, dynamoSet.GetAttributeValue(pk, DynamoDbKey.Pk) }
+                };
+                return await dynamoSet.GetByKeysAsync(keys, selectedProperties);
+            }
         }
 
         //public class DynamnoQuery<T>
