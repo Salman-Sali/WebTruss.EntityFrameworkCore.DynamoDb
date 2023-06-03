@@ -9,27 +9,19 @@ namespace ExampleWebApi
         public string Id { get; set; } = null!;
 
         public string Name { get; set; } = null!;
+
+        public DateOnly DateOfBirth { get; set; }
+
+        public TimeOnly ShiftStartTime { get; set; }
+
+        public EmployeeType EmployeeType { get; set; }
     }
 
-    public class ABC
+    public enum EmployeeType
     {
-        public string Name { get; set; }
-        public int Age { get; set; }
-        public int Balance { get; set; }
-    }
-
-    public class Employee2
-    {
-        public Employee2()
-        {
-            var a = new List<ABC>
-            {
-                new ABC{ Age = 1, Balance = 1, Name = "342" },
-                new ABC{ Age = 1, Balance = 1, Name = "342" },
-                new ABC{ Age = 1, Balance = 1, Name = "342" },
-            };
-
-            var aaa = a.Select(x => new { x.Name }).First();
-        }
+        Developer,
+        Finance,
+        Marketing,
+        Other
     }
 }

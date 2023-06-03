@@ -14,8 +14,6 @@ namespace ExampleWebApi.Controllers
         public EmployeesController(ApplicationDbContext context)
         {
             this.context = context;
-            var a = context.Employees.Select(x => new { x.Name }).FirstOrDefaultAsync("Emp-1").Result;
-            var asdsf = 1;
         }
 
         [HttpGet("{id}")]
@@ -29,6 +27,12 @@ namespace ExampleWebApi.Controllers
             return this.Ok(employee);
         }
 
+        [HttpDelete("id")]
+        public async Task<IActionResult> DeleteEmployee(string id)
+        {
+            return Ok(await context.Employees.ExecuteDeleteAsync(id));
+        }
+
         [HttpGet]
         public async Task<IActionResult> GetEmployees(int limit, string? paginationToken)
         {
@@ -36,13 +40,8 @@ namespace ExampleWebApi.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> AddEmployee(string id, string name)
+        public async Task<IActionResult> AddEmployee([FromBody]Employee employee)
         {
-            var employee = new Employee
-            {
-                Id = id,
-                Name = name,
-            };
             context.Employees.Add(employee);
             await context.SaveChangesAsync();
             return this.Ok();

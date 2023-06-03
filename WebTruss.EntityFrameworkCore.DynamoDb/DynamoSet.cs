@@ -4,6 +4,7 @@ using Amazon.DynamoDBv2.Model;
 using Amazon.Runtime;
 using KellermanSoftware.CompareNetObjects;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Xml.Linq;
@@ -177,6 +178,56 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             return await GetByKeysAsync(keys, propertyNames.Select(x => x.Key).ToList());
         }
 
+        private T AttributesToEntity(Dictionary<string, AttributeValue> attributes)
+        {
+            var data = (T)Activator.CreateInstance(typeof(T));
+            foreach (var property in propertyNames)
+            {
+                if (!attributes.Where(x => x.Key == property.Value).Any())
+                {
+                    continue;
+                }
+
+                object? value = null;
+                var attribute = attributes.Where(x => x.Key == property.Value).FirstOrDefault();
+                if (property.Key.PropertyType == typeof(string))
+                {
+                    value = attribute.Value.S;
+                }
+                else if (property.Key.PropertyType == typeof(int))
+                {
+                    value = attribute.Value.N;
+                }
+                else if (property.Key.PropertyType == typeof(bool))
+                {
+                    value = attribute.Value.BOOL;
+                }
+                else if (property.Key.PropertyType == typeof(List<string>))
+                {
+                    value = attribute.Value.SS;
+                }
+                else if (property.Key.PropertyType == typeof(DateTime))
+                {
+                    value = DateTime.Parse(attribute.Value.S);
+                }
+                else if (property.Key.PropertyType == typeof(DateOnly))
+                {
+                    value = DateOnly.Parse(attribute.Value.S);
+                }
+                else if(property.Key.PropertyType == typeof(TimeOnly))
+                {
+                    value = TimeOnly.Parse(attribute.Value.S);
+                }
+                else
+                {
+                    var converter = TypeDescriptor.GetConverter(property.Key.PropertyType);
+                    value = converter.ConvertFromString(attribute.Value.S);
+                }
+                property.Key.SetValue(data, value);
+            }
+            return data;
+        }
+
         private async Task<T?> GetByKeysAsync(Dictionary<string, AttributeValue> keys, List<PropertyInfo> properties)
         {
             var attributesToGet = propertyNames.Where(x => properties.Contains(x.Key)).Select(x => x.Value).ToList();
@@ -193,21 +244,8 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                 return null;
             }
 
-            var data = (T)Activator.CreateInstance(typeof(T));
-            foreach (var property in propertyNames)
-            {
-                if (!response.Item.Where(x => x.Key == property.Value).Any())
-                {
-                    continue;
-                }
+            var data = AttributesToEntity(response.Item);
 
-                object? value = null;
-                if (property.Key.PropertyType == typeof(string))
-                {
-                    value = response.Item.Where(x => x.Key == property.Value).FirstOrDefault().Value.S;
-                }
-                property.Key.SetValue(data, value);
-            }
             entities.Add(new Tracking<T>(data, EntityState.Unchanged));
             return data;
         }
@@ -274,7 +312,28 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                 {
                     continue;
                 }
-                item.Add(property.Value, new AttributeValue(value.ToString()));
+                var attribute = new AttributeValue();
+                if(property.Key.PropertyType == typeof(string))
+                {
+                    attribute.S = value.ToString();
+                }
+                else if(property.Key.PropertyType == typeof(int))
+                {
+                    attribute.N = value.ToString();
+                }
+                else if(property.Key.PropertyType == typeof(bool))
+                {
+                    attribute.BOOL = (bool)value;
+                }
+                else if(property.Key.PropertyType == typeof(List<string>))
+                {
+                    attribute.SS = (List<string>)value;
+                }
+                else
+                {
+                    attribute.S = value.ToString();
+                }
+                item.Add(property.Value, attribute);
             }
             return item;
         }
@@ -316,6 +375,23 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             return result.HttpStatusCode == System.Net.HttpStatusCode.OK;
         }
 
+        public async Task<bool> ExecuteDeleteAsync<Tid>(Tid pk, CancellationToken cancellationToken = default)
+        {
+            var keys = new Dictionary<string, AttributeValue>();
+            var primaryKey = new AttributeValue();
+            if (pkProperty.PropertyType == typeof(string))
+            {
+                primaryKey.S = pk.ToString();
+            }
+            else if (pkProperty.PropertyType == typeof(int))
+            {
+                primaryKey.N = pk.ToString();
+            }
+            keys.Add(propertyNames.Where(x => x.Key == pkProperty).First().Value, primaryKey);
+            var result = await context.Client.DeleteItemAsync(tableName, keys, cancellationToken);
+            return result.HttpStatusCode == System.Net.HttpStatusCode.OK;
+        }
+
         /// <summary>
         /// List elements of the table. This method performs a dynamodb scan.
         /// </summary>
@@ -338,26 +414,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             result.PaginationToken = search.PaginationToken;
             foreach (var item in searchResult)
             {
-                var data = (T)Activator.CreateInstance(typeof(T));
-                foreach (var property in propertyNames)
-                {
-                    var value = Activator.CreateInstance(property.GetType());
-                    if (!item.Where(x => x.Key == property.Value).Any())
-                    {
-                        continue;
-                    }
-                    var itemValue = item.Where(x => x.Key == property.Value).FirstOrDefault().Value;
-                    var type = property.Value.GetType();
-                    if (type == typeof(string))
-                    {
-                        value = itemValue.AsString();
-                    }
-                    else if (type == typeof(int))
-                    {
-                        value = itemValue.AsInt();
-                    }
-                    property.Key.SetValue(data, value);
-                }
+                var data = AttributesToEntity(item.ToAttributeMap());
                 result.Items.Add(data);
             }
             return result;
