@@ -239,7 +239,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             };
 
             var response = await context.Client.GetItemAsync(request);
-            if (response.HttpStatusCode != System.Net.HttpStatusCode.OK)
+            if (response.Item.Count == 0)
             {
                 return null;
             }

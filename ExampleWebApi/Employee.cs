@@ -15,6 +15,8 @@ namespace ExampleWebApi
         public TimeOnly ShiftStartTime { get; set; }
 
         public EmployeeType EmployeeType { get; set; }
+
+        public List<string>? Items { get; set; }
     }
 
     public enum EmployeeType
