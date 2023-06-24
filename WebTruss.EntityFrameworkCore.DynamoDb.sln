@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.33414.496
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebTruss.EntityFrameworkCore.DynamoDb", "WebTruss.EntityFrameworkCore.DynamoDb\WebTruss.EntityFrameworkCore.DynamoDb.csproj", "{4B372855-D735-4155-8FEB-634F39EF08FD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebTruss.EntityFrameworkCore.DynamoDb", "WebTruss.EntityFrameworkCore.DynamoDb\WebTruss.EntityFrameworkCore.DynamoDb.csproj", "{4B372855-D735-4155-8FEB-634F39EF08FD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExampleWebApi", "ExampleWebApi\ExampleWebApi.csproj", "{D8EE89D8-F718-487E-8353-CDEEC1A8C2D9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExampleWebApi", "ExampleWebApi\ExampleWebApi.csproj", "{D8EE89D8-F718-487E-8353-CDEEC1A8C2D9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebTruss.EntityFrameworkCore.DynamoDb.Attributes", "WebTruss.EntityFrameworkCore.DynamoDb.Attributes\WebTruss.EntityFrameworkCore.DynamoDb.Attributes.csproj", "{ECFE2555-E5BC-4B97-8432-E9DBD66EF572}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{D8EE89D8-F718-487E-8353-CDEEC1A8C2D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D8EE89D8-F718-487E-8353-CDEEC1A8C2D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D8EE89D8-F718-487E-8353-CDEEC1A8C2D9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ECFE2555-E5BC-4B97-8432-E9DBD66EF572}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ECFE2555-E5BC-4B97-8432-E9DBD66EF572}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ECFE2555-E5BC-4B97-8432-E9DBD66EF572}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ECFE2555-E5BC-4B97-8432-E9DBD66EF572}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
