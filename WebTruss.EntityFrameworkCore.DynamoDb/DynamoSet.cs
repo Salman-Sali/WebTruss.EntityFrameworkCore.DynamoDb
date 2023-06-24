@@ -275,29 +275,44 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             }
 
             var paginationToken = PaginationToken.FromString(token);
+
+            int currentPage = 1;
+            if (paginationToken != null)
+            {
+                if (paginationToken.Forward)
+                {
+                    currentPage = paginationToken.CurrentPage + 1;
+                }
+                else
+                {
+                    currentPage = paginationToken.CurrentPage - 1;
+                }
+            }
             var request = new QueryRequest
             {
                 TableName = this.tableName,
                 ScanIndexForward = paginationToken?.Forward ?? true,
-                KeyConditionExpression = $"{propertyNames.Where(a=>a.Key == pkProperty).First().Value} = :v_Id",
+                KeyConditionExpression = $"{propertyNames.Where(a => a.Key == pkProperty).First().Value} = :v_Id",
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
-                {{":v_Id", new AttributeValue { S =  pk }}},
+                {
+                    {":v_Id", new AttributeValue { S =  pk }}
+                },
                 Limit = limit,
-                ExclusiveStartKey = paginationToken != null? new Dictionary<string, AttributeValue>
+                ExclusiveStartKey = paginationToken != null ? new Dictionary<string, AttributeValue>
                 {
                     { propertyNames.Where(a=>a.Key == pkProperty).First().Value, new AttributeValue { S = pk } },
                     { propertyNames.Where(a=>a.Key == skProperty).First().Value, new AttributeValue { S = paginationToken.Sk } }
                 } : new()
             };
             var queryResult = await this.context.Client.QueryAsync(request);
-            var result = new QueriedPaginatedResult<T>();
+            var result = new QueriedPaginatedResult<T>(currentPage);
 
             if (queryResult.ScannedCount == 0)
             {
                 return result;
             }
 
-            if(!paginationToken?.Forward ?? false)
+            if (!paginationToken?.Forward ?? false)
             {
                 queryResult.Items.Reverse();
             }
@@ -316,7 +331,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             }
             else
             {
-                result.PreviousToken = (new PaginationToken(paginationToken.FirstSk, false, firstSk.Value.S)).ToString();
+                result.PreviousToken = (new PaginationToken(paginationToken.FirstSk, false, firstSk.Value.S, currentPage)).ToString();
             }
 
             if (queryResult.ScannedCount != limit)
@@ -332,13 +347,13 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                 else
                 {
                     var sk = queryResult.LastEvaluatedKey.Where(a => a.Key == propertyNames.Where(a => a.Key == skProperty).First().Value).First();
-                    result.NextToken = (new PaginationToken(paginationToken?.FirstSk ?? firstSk.Value.S, true, sk.Value.S)).ToString();
+                    result.NextToken = (new PaginationToken(paginationToken?.FirstSk ?? firstSk.Value.S, true, sk.Value.S, currentPage)).ToString();
                 }
             }
             else
             {
                 var lastSk = queryResult.Items.Last().Where(a => a.Key == propertyNames.Where(a => a.Key == skProperty).First().Value).First();
-                result.NextToken = (new PaginationToken(paginationToken.FirstSk, true, lastSk.Value.S)).ToString();
+                result.NextToken = (new PaginationToken(paginationToken.FirstSk, true, lastSk.Value.S, currentPage)).ToString();
             }
 
             return result;

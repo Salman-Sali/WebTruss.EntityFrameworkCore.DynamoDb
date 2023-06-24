@@ -37,7 +37,7 @@ namespace ExampleWebApi.Controllers
         [HttpGet("GetPage")]
         public async Task<IActionResult> TakePage(string? token)
         {
-            return this.Ok(await context.SingleTable.PagedListAsync("Category", 5, token));
+            return this.Ok(await context.SingleTable.PagedListAsync("Product", 5, token));
         }
     }
 }
