@@ -196,7 +196,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                 }
                 else if (property.Key.PropertyType == typeof(int))
                 {
-                    value = attribute.Value.N;
+                    value = int.Parse(attribute.Value.N);
                 }
                 else if (property.Key.PropertyType == typeof(bool))
                 {
