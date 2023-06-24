@@ -151,7 +151,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             {
                 attributeValue.N = id.ToString();
             }
-            else if (typeof(Tid) == typeof(string))
+            else
             {
                 attributeValue.S = id.ToString();
             }
@@ -449,26 +449,28 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
         {
             var keys = new Dictionary<string, AttributeValue>();
             var pk = new AttributeValue();
-            if (pkProperty.PropertyType == typeof(string))
-            {
-                pk.S = (string)pkProperty.GetValue(entity);
-            }
-            else if (pkProperty.PropertyType == typeof(int))
+            if (pkProperty.PropertyType == typeof(int))
             {
                 pk.N = (string)pkProperty.GetValue(entity);
+
+            }
+            else
+            {
+                pk.S = (string)pkProperty.GetValue(entity);
             }
             keys.Add(propertyNames.Where(x => x.Key == pkProperty).First().Value, pk);
 
             if (skProperty != null)
             {
                 var sk = new AttributeValue();
-                if (skProperty.PropertyType == typeof(string))
-                {
-                    sk.S = (string)skProperty.GetValue(entity);
-                }
-                else if (skProperty.PropertyType == typeof(int))
+                
+                if (skProperty.PropertyType == typeof(int))
                 {
                     sk.N = (string)skProperty.GetValue(entity);
+                }
+                else
+                {
+                    sk.S = (string)skProperty.GetValue(entity);
                 }
                 keys.Add(propertyNames.Where(x => x.Key == skProperty).First().Value, sk);
             }
@@ -480,13 +482,14 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
         {
             var keys = new Dictionary<string, AttributeValue>();
             var primaryKey = new AttributeValue();
-            if (pkProperty.PropertyType == typeof(string))
-            {
-                primaryKey.S = pk.ToString();
-            }
-            else if (pkProperty.PropertyType == typeof(int))
+            
+            if (pkProperty.PropertyType == typeof(int))
             {
                 primaryKey.N = pk.ToString();
+            }
+            else
+            {
+                primaryKey.S = pk.ToString();
             }
             keys.Add(propertyNames.Where(x => x.Key == pkProperty).First().Value, primaryKey);
             var result = await context.Client.DeleteItemAsync(tableName, keys, cancellationToken);
@@ -497,25 +500,29 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
         {
             var keys = new Dictionary<string, AttributeValue>();
             var primaryKey = new AttributeValue();
-            if (pkProperty.PropertyType == typeof(string))
-            {
-                primaryKey.S = pk.ToString();
-            }
-            else if (pkProperty.PropertyType == typeof(int))
+
+            if (pkProperty.PropertyType == typeof(int))
             {
                 primaryKey.N = pk.ToString();
             }
+            else
+            {
+                primaryKey.S = pk.ToString();
+            }
+             
             keys.Add(propertyNames.Where(x => x.Key == pkProperty).First().Value, primaryKey);
 
             var secondaryKey = new AttributeValue();
-            if (pkProperty.PropertyType == typeof(string))
-            {
-                secondaryKey.S = sk.ToString();
-            }
-            else if (pkProperty.PropertyType == typeof(int))
+
+            if (pkProperty.PropertyType == typeof(int))
             {
                 secondaryKey.N = sk.ToString();
             }
+            else
+            {
+                secondaryKey.S = sk.ToString();
+            }
+             
             keys.Add(propertyNames.Where(x => x.Key == skProperty).First().Value, secondaryKey);
 
             var result = await context.Client.DeleteItemAsync(tableName, keys, cancellationToken);
