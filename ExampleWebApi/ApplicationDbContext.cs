@@ -14,12 +14,15 @@ namespace ExampleWebApi
 
             base.Tables = new Dictionary<Type, string>
             {
-                { typeof(Employee), dynamoDbTablesConfiguration.Employees }
+                { typeof(Employee), dynamoDbTablesConfiguration.Employees },
+                { typeof(SingleTable), dynamoDbTablesConfiguration.SingleTable }
             };
 
             Employees = new DynamoSet<Employee>(this);
+            SingleTable = new DynamoSet<SingleTable>(this);
         }
 
         public DynamoSet<Employee> Employees { get; set; }
+        public DynamoSet<SingleTable> SingleTable { get; set; }
     }
 }

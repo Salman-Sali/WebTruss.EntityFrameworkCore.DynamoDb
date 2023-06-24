@@ -214,7 +214,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                 {
                     value = DateOnly.Parse(attribute.Value.S);
                 }
-                else if(property.Key.PropertyType == typeof(TimeOnly))
+                else if (property.Key.PropertyType == typeof(TimeOnly))
                 {
                     value = TimeOnly.Parse(attribute.Value.S);
                 }
@@ -256,6 +256,92 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
 
             ComparisonResult result = compareLogic.Compare(entity, original);
             return !result.AreEqual;
+        }
+
+
+        /// <summary>
+        /// Return paginated list. Can only be called on tables with composite key.
+        /// </summary>
+        /// <param name="pk"></param>
+        /// <param name="limit"></param>
+        /// <param name="token"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public async Task<QueriedPaginatedResult<T>> PagedListAsync(string pk, int limit, string? token)
+        {
+            if (skProperty == null)
+            {
+                throw new Exception("PagedList can only be called on tables with composite key.");
+            }
+
+            var paginationToken = PaginationToken.FromString(token);
+            var request = new QueryRequest
+            {
+                TableName = this.tableName,
+                ScanIndexForward = paginationToken?.Forward ?? true,
+                KeyConditionExpression = $"{propertyNames.Where(a=>a.Key == pkProperty).First().Value} = :v_Id",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {{":v_Id", new AttributeValue { S =  pk }}},
+                Limit = limit,
+                ExclusiveStartKey = paginationToken != null? new Dictionary<string, AttributeValue>
+                {
+                    { propertyNames.Where(a=>a.Key == pkProperty).First().Value, new AttributeValue { S = pk } },
+                    { propertyNames.Where(a=>a.Key == skProperty).First().Value, new AttributeValue { S = paginationToken.Sk } }
+                } : new()
+            };
+            var queryResult = await this.context.Client.QueryAsync(request);
+            var result = new QueriedPaginatedResult<T>();
+
+            if (queryResult.ScannedCount == 0)
+            {
+                return result;
+            }
+
+            if(!paginationToken?.Forward ?? false)
+            {
+                queryResult.Items.Reverse();
+            }
+
+            foreach (var item in queryResult.Items)
+            {
+                var data = AttributesToEntity(item);
+                result.Items.Add(data);
+            }
+
+            var firstSk = queryResult.Items.First().Where(a => a.Key == propertyNames.Where(a => a.Key == skProperty).First().Value).First();
+
+            if (paginationToken == null || firstSk.Value.S == paginationToken.FirstSk)
+            {
+                result.PreviousToken = null;
+            }
+            else
+            {
+                result.PreviousToken = (new PaginationToken(paginationToken.FirstSk, false, firstSk.Value.S)).ToString();
+            }
+
+            if (queryResult.ScannedCount != limit)
+            {
+                result.NextToken = null;
+            }
+            else if (paginationToken?.Forward ?? true)
+            {
+                if (queryResult.LastEvaluatedKey.Count == 0)
+                {
+                    result.NextToken = null;
+                }
+                else
+                {
+                    var sk = queryResult.LastEvaluatedKey.Where(a => a.Key == propertyNames.Where(a => a.Key == skProperty).First().Value).First();
+                    result.NextToken = (new PaginationToken(paginationToken?.FirstSk ?? firstSk.Value.S, true, sk.Value.S)).ToString();
+                }
+            }
+            else
+            {
+                var lastSk = queryResult.Items.Last().Where(a => a.Key == propertyNames.Where(a => a.Key == skProperty).First().Value).First();
+                result.NextToken = (new PaginationToken(paginationToken.FirstSk, true, lastSk.Value.S)).ToString();
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -313,19 +399,19 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                     continue;
                 }
                 var attribute = new AttributeValue();
-                if(property.Key.PropertyType == typeof(string))
+                if (property.Key.PropertyType == typeof(string))
                 {
                     attribute.S = value.ToString();
                 }
-                else if(property.Key.PropertyType == typeof(int))
+                else if (property.Key.PropertyType == typeof(int))
                 {
                     attribute.N = value.ToString();
                 }
-                else if(property.Key.PropertyType == typeof(bool))
+                else if (property.Key.PropertyType == typeof(bool))
                 {
                     attribute.BOOL = (bool)value;
                 }
-                else if(property.Key.PropertyType == typeof(List<string>))
+                else if (property.Key.PropertyType == typeof(List<string>))
                 {
                     attribute.SS = (List<string>)value;
                 }
@@ -392,6 +478,36 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             return result.HttpStatusCode == System.Net.HttpStatusCode.OK;
         }
 
+        public async Task<bool> ExecuteDeleteAsync<Pid, Sid>(Pid pk, Sid sk, CancellationToken cancellationToken = default)
+        {
+            var keys = new Dictionary<string, AttributeValue>();
+            var primaryKey = new AttributeValue();
+            if (pkProperty.PropertyType == typeof(string))
+            {
+                primaryKey.S = pk.ToString();
+            }
+            else if (pkProperty.PropertyType == typeof(int))
+            {
+                primaryKey.N = pk.ToString();
+            }
+            keys.Add(propertyNames.Where(x => x.Key == pkProperty).First().Value, primaryKey);
+
+            var secondaryKey = new AttributeValue();
+            if (pkProperty.PropertyType == typeof(string))
+            {
+                secondaryKey.S = sk.ToString();
+            }
+            else if (pkProperty.PropertyType == typeof(int))
+            {
+                secondaryKey.N = sk.ToString();
+            }
+            keys.Add(propertyNames.Where(x => x.Key == skProperty).First().Value, secondaryKey);
+
+            var result = await context.Client.DeleteItemAsync(tableName, keys, cancellationToken);
+            return result.HttpStatusCode == System.Net.HttpStatusCode.OK;
+        }
+
+
         /// <summary>
         /// List elements of the table. This method performs a dynamodb scan.
         /// </summary>
@@ -399,7 +515,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
         /// <param name="paginationToken"></param>
         /// <param name="filter"></param>
         /// <returns></returns>
-        public async Task<PaginatedResult<T>> ScanAsync(int count, string? paginationToken = null, QueryFilter? filter = null)
+        public async Task<ScannedPaginatedResult<T>> ScanAsync(int count, string? paginationToken = null, QueryFilter? filter = null)
         {
             var table = Table.LoadTable(context.Client, tableName);
             Search search = table.Scan(new ScanOperationConfig
@@ -407,10 +523,11 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                 ConsistentRead = true,
                 Limit = count,
                 Select = SelectValues.AllAttributes,
-                PaginationToken = paginationToken
+                PaginationToken = paginationToken,
+
             });
             var searchResult = await search.GetNextSetAsync();
-            var result = new PaginatedResult<T>();
+            var result = new ScannedPaginatedResult<T>();
             result.PaginationToken = search.PaginationToken;
             foreach (var item in searchResult)
             {
@@ -427,7 +544,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
         /// <returns></returns>
         public async Task<bool> ExecuteAdd100Async(List<T> entities, CancellationToken cancellationToken = default)
         {
-            if(entities.Count() > 100)
+            if (entities.Count() > 100)
             {
                 throw new Exception("ExecutePut100Async can only handle 100 entities at a time.");
             }
@@ -482,8 +599,8 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
 
             public async Task<T?> FirstOrDefaultAsync<Tid>(Tid pk)
             {
-                var keys = new Dictionary<string, AttributeValue> 
-                { 
+                var keys = new Dictionary<string, AttributeValue>
+                {
                     { dynamoSet.propertyNames.Where(a=>a.Key == dynamoSet.pkProperty).First().Value, dynamoSet.GetAttributeValue(pk, DynamoDbKey.Pk) }
                 };
                 return await dynamoSet.GetByKeysAsync(keys, selectedProperties);
