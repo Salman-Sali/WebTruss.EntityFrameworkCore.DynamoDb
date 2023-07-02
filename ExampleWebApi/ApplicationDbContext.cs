@@ -18,11 +18,11 @@ namespace ExampleWebApi
                 { typeof(SingleTable), dynamoDbTablesConfiguration.SingleTable }
             };
 
-            Employees = new DynamoSet<Employee>(this);
-            SingleTable = new DynamoSet<SingleTable>(this);
+            Employees = new OldDynamoSet<Employee>(this);
+            SingleTable = new OldDynamoSet<SingleTable>(this);
         }
 
-        public DynamoSet<Employee> Employees { get; set; }
-        public DynamoSet<SingleTable> SingleTable { get; set; }
+        public OldDynamoSet<Employee> Employees { get; set; }
+        public OldDynamoSet<SingleTable> SingleTable { get; set; }
     }
 }

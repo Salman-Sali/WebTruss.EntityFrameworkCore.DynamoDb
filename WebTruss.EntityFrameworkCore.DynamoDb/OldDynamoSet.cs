@@ -12,7 +12,7 @@ using WebTruss.EntityFrameworkCore.DynamoDb.Attributes;
 
 namespace WebTruss.EntityFrameworkCore.DynamoDb
 {
-    public class DynamoSet<T> : IDynoSour where T : class
+    public class OldDynamoSet<T> : IDynoSour where T : class
     {
         private readonly string tableName;
         private readonly DynamoDbContext context;
@@ -21,7 +21,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
         private PropertyInfo? skProperty;
         private Dictionary<PropertyInfo, string> propertyNames;
 
-        public DynamoSet(DynamoDbContext context)
+        public OldDynamoSet(DynamoDbContext context)
         {
             this.context = context;
 
@@ -245,7 +245,6 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             }
 
             var data = AttributesToEntity(response.Item);
-
             entities.Add(new Tracking<T>(data, EntityState.Unchanged));
             return data;
         }
@@ -609,9 +608,9 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
 
         public class DynamoSelection
         {
-            private readonly DynamoSet<T> dynamoSet;
+            private readonly OldDynamoSet<T> dynamoSet;
 
-            public DynamoSelection(DynamoSet<T> dynamoSet, List<PropertyInfo> properties)
+            public DynamoSelection(OldDynamoSet<T> dynamoSet, List<PropertyInfo> properties)
             {
                 this.dynamoSet = dynamoSet;
                 selectedProperties = properties;

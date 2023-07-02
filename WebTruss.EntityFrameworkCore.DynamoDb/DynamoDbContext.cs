@@ -14,7 +14,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             var dynamoSets = this.GetType()
                 .GetProperties()
                 .Where(x => x.PropertyType.IsGenericType &&
-                           x.PropertyType.GetGenericTypeDefinition() == typeof(DynamoSet<>))
+                           x.PropertyType.GetGenericTypeDefinition() == typeof(OldDynamoSet<>))
                 .ToList();
 
             foreach (var dynamoSet in dynamoSets)
