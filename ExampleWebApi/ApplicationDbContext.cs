@@ -1,6 +1,7 @@
 ﻿using Amazon;
 using ExampleWebApi.Configurations;
 using WebTruss.EntityFrameworkCore.DynamoDb;
+using WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions;
 
 namespace ExampleWebApi
 {
@@ -12,17 +13,11 @@ namespace ExampleWebApi
                 aWSConfiguration.SecretKey, 
                 RegionEndpoint.GetBySystemName(aWSConfiguration.Region));
 
-            base.Tables = new Dictionary<Type, string>
-            {
-                { typeof(Employee), dynamoDbTablesConfiguration.Employees },
-                { typeof(SingleTable), dynamoDbTablesConfiguration.SingleTable }
-            };
-
-            Employees = new OldDynamoSet<Employee>(this);
-            SingleTable = new OldDynamoSet<SingleTable>(this);
+            Employees = new DynamoSet<Employee>(this, dynamoDbTablesConfiguration.Employees);
+            SingleTable = new DynamoSet<SingleTable>(this, dynamoDbTablesConfiguration.SingleTable);
         }
 
-        public OldDynamoSet<Employee> Employees { get; set; }
-        public OldDynamoSet<SingleTable> SingleTable { get; set; }
+        public DynamoSet<Employee> Employees { get; set; }
+        public DynamoSet<SingleTable> SingleTable { get; set; }
     }
 }

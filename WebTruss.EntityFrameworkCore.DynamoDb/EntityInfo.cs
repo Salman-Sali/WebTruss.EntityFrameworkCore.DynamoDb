@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using WebTruss.EntityFrameworkCore.DynamoDb.Attributes;
 
-namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
+namespace WebTruss.EntityFrameworkCore.DynamoDb
 {
     public class EntityInfo
     {
