@@ -7,19 +7,19 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
 {
     public class QueryPagination
     {
-        public QueryPagination(PaginationToken? prv, PaginationToken? nxt)
+        public QueryPagination(QueryPaginationToken? prv, QueryPaginationToken? nxt)
         {
             Previous = prv;
             Next = nxt;
         }
 
-        public PaginationToken? Previous { get; set; }
-        public PaginationToken? Next { get; set; }
+        public QueryPaginationToken? Previous { get; set; }
+        public QueryPaginationToken? Next { get; set; }
     }
 
-    public class PaginationToken
+    public class QueryPaginationToken
     {
-        public PaginationToken(string? fs, bool fwd, string? s, int c)
+        public QueryPaginationToken(string? fs, bool fwd, string? s, int c)
         {
             FirstSk = fs;
             Forward = fwd;
@@ -27,16 +27,15 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             CurrentPage = c;
         }
 
-        public static PaginationToken? FromString(string? base64String)
+        public static QueryPaginationToken? FromString(string? base64String)
         {
             if (string.IsNullOrEmpty(base64String))
             {
                 return null;
             }
-            var decompressedJsonString = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(base64String));
 
-
-            return JsonConvert.DeserializeObject<PaginationToken>(decompressedJsonString);
+            var jsonString = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(base64String));
+            return JsonConvert.DeserializeObject<QueryPaginationToken>(jsonString);
         }
 
         [JsonProperty("c")]

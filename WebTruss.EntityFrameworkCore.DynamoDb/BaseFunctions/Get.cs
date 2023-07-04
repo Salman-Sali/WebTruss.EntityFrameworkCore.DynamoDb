@@ -12,7 +12,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.BaseFunctions
             {
                 TableName = tableName,
                 Key = keys,
-                ProjectionExpression = projection
+                ProjectionExpression = string.IsNullOrEmpty(projection) ? null : projection,
             };
 
             var response = await client.GetItemAsync(request);

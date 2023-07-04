@@ -50,7 +50,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
 
         private Dictionary<string, AttributeValue> GetKeyDictionary<V>(DynamoPropertyInfo dynamoProperty, V value)
         {
-            if (numericTypes.Contains(dynamoProperty.Property.GetType()))
+            if (numericTypes.Contains(dynamoProperty.Property.PropertyType))
             {
                 return new Dictionary<string, AttributeValue>
                 {
@@ -66,14 +66,14 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             }
         }
 
-        private Dictionary<string, AttributeValue> GetPropertyDictionary(DynamoPropertyInfo dynamoProperty, object value)
+        private Dictionary<string, AttributeValue> GetPropertyDictionary(DynamoPropertyInfo dynamoProperty, object? value)
         {
             if (value == null)
             {
                 return new Dictionary<string, AttributeValue>();
             }
 
-            var propertyType = dynamoProperty.Property.GetType();
+            var propertyType = dynamoProperty.Property.PropertyType;
             if (numericTypes.Contains(propertyType))
             {
                 return new Dictionary<string, AttributeValue>
@@ -109,7 +109,11 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             var dictionary = new Dictionary<string, AttributeValue>();
             foreach (var property in entityInfo.Properties)
             {
-                dictionary.Concat(GetPropertyDictionary(property, property.Property.GetValue(entity) ?? new AttributeValue()));
+                var propertyDictionary = GetPropertyDictionary(property, property.Property.GetValue(entity));
+                if (propertyDictionary.Count != 0)
+                {
+                    dictionary.Add(propertyDictionary.First().Key, propertyDictionary.First().Value);
+                }
             }
             return dictionary;
         }

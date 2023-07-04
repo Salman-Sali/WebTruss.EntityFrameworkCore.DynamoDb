@@ -5,7 +5,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
 {
     public partial class DynamoSet<T>
     {
-        public async Task<bool> AnyAsync<Pid, Sid>(Pid pk)
+        public async Task<bool> AnyAsync<Pid>(Pid pk)
         {
             var pkDictionary = PkDictionary(pk);
             return await Get.AnyAsync(pkDictionary, entityInfo.TableName, context.Client);

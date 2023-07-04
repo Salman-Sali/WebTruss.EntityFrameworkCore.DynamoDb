@@ -16,8 +16,4 @@
     <ProjectReference Include="..\WebTruss.EntityFrameworkCore.DynamoDb\WebTruss.EntityFrameworkCore.DynamoDb.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Controllers\" />
-  </ItemGroup>
-
 </Project>

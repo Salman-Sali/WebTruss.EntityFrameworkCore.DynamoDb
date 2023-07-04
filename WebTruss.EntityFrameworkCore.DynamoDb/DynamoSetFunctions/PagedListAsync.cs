@@ -5,7 +5,12 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
 {
     public partial class DynamoSet<T>
     {
-        public async Task<QueriedPaginatedResult<T>> PagedListAsync<Pid>(Pid pk, int limit, string? token)
+        /// <summary>
+        /// <br> PagedList requires entity to have sort key column. Otherwise you will get an exception. </br>
+        /// <br> PagedList behaves differently from ScannedList. </br>
+        /// <br> The last page will return null token when there are no more pages left. </br>
+        /// </summary>
+        public async Task<PaginatedResult<T>> PagedListAsync<Pid>(Pid pk, int limit, string? token)
         {
             var skProperty = entityInfo.Sk();
             if (skProperty == null)
@@ -15,7 +20,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
 
             var pkProperty = entityInfo.Pk();
 
-            var paginationToken = PaginationToken.FromString(token);
+            var paginationToken = QueryPaginationToken.FromString(token);
             int currentPage = 1;
             if (paginationToken != null)
             {
@@ -47,7 +52,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
                 } : new()
             };
             var queryResult = await this.context.Client.QueryAsync(request);
-            var result = new QueriedPaginatedResult<T>(currentPage);
+            var result = new PaginatedResult<T>(currentPage);
 
             if (queryResult.ScannedCount == 0)
             {
@@ -73,7 +78,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             }
             else
             {
-                result.PreviousToken = (new PaginationToken(paginationToken.FirstSk, false, firstSk.Value.S, currentPage)).ToString();
+                result.PreviousToken = (new QueryPaginationToken(paginationToken.FirstSk, false, firstSk.Value.S, currentPage)).ToString();
             }
 
             if (queryResult.ScannedCount != limit)
@@ -89,13 +94,13 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
                 else
                 {
                     var sk = queryResult.LastEvaluatedKey.Where(a => a.Key == skProperty.Name).First();
-                    result.NextToken = (new PaginationToken(paginationToken?.FirstSk ?? firstSk.Value.S, true, sk.Value.S, currentPage)).ToString();
+                    result.NextToken = (new QueryPaginationToken(paginationToken?.FirstSk ?? firstSk.Value.S, true, sk.Value.S, currentPage)).ToString();
                 }
             }
             else
             {
                 var lastSk = queryResult.Items.Last().Where(a => a.Key == skProperty.Name).First();
-                result.NextToken = (new PaginationToken(paginationToken.FirstSk, true, lastSk.Value.S, currentPage)).ToString();
+                result.NextToken = (new QueryPaginationToken(paginationToken.FirstSk, true, lastSk.Value.S, currentPage)).ToString();
             }
 
             return result;
