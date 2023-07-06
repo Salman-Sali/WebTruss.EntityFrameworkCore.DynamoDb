@@ -1,4 +1,5 @@
 ﻿using Amazon.DynamoDBv2.Model;
+using ExampleWebApi.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json.Linq;

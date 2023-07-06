@@ -17,7 +17,12 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
         public DynamoSet(DynamoDbContext context, string tableName)
         {
             this.context = context;
-            entityInfo = new EntityInfo(typeof(T), tableName);
+            entityInfo = new EntityInfo(typeof(T), tableName, context);
+        }
+
+        public string GetTableName()
+        {
+            return entityInfo.TableName;
         }
 
         private Dictionary<string, AttributeValue> PkDictionary<Pid>(Pid pk)

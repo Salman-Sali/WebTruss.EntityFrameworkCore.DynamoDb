@@ -1,6 +1,6 @@
 ﻿using WebTruss.EntityFrameworkCore.DynamoDb.Attributes;
 
-namespace ExampleWebApi
+namespace ExampleWebApi.Models
 {
     public class Employee
     {

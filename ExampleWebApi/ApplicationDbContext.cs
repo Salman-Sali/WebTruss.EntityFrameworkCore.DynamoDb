@@ -1,5 +1,6 @@
 ﻿using Amazon;
 using ExampleWebApi.Configurations;
+using ExampleWebApi.Models;
 using WebTruss.EntityFrameworkCore.DynamoDb;
 using WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions;
 
