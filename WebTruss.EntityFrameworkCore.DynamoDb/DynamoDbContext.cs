@@ -11,13 +11,16 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
 
         internal string GetTableName(Type type)
         {
-            foreach (var property in this.GetType().GetProperties().Where(x => x.PropertyType == type))
+            foreach (var property in this.GetType().GetProperties())
             {
                 if (property.PropertyType.IsGenericType && property.PropertyType.GetGenericTypeDefinition() == typeof(DynamoSet<>))
                 {
                     Type[] genericArguments = property.PropertyType.GetGenericArguments();
-                    MethodInfo method = property.PropertyType.GetMethod("GetTableName")!;
-                    return (string)method.Invoke(property.GetValue(this), null)!;
+                    if (genericArguments.Length == 1 && genericArguments[0] == type)
+                    {
+                        MethodInfo method = property.PropertyType.GetMethod("GetTableName")!;
+                        return (string)method.Invoke(property.GetValue(this), null)!;
+                    }
                 }
             }
             throw new Exception($"Entity {type.Name} not found in dynamo context.");

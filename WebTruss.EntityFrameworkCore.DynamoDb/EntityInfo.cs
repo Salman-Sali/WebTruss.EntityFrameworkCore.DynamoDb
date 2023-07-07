@@ -89,12 +89,15 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                 var link = LinkedEntities.Where(x => x.LinkingProperty.Name == item.Value.LinkingAttributeName).FirstOrDefault();
                 if (link == null)
                 {
+                    var entityPkProperty = item.Value.EntityType.GetProperties().Where(x=> x.GetCustomAttribute<Pk>() != null).First();
+                    var entityPkPropertyName = entityPkProperty.GetCustomAttribute<DynamoPropertyName>();
                     LinkedEntities.Add(new DynamoEntityLink
                     {
                         TableName = context.GetTableName(item.Value.EntityType),
                         LinkingProperty = linkingPropertyInfo,
                         Properties = new List<DynamoPropertyInfo> { new DynamoPropertyInfo(item.Key, item.Value.AttributeName ?? item.Key.Name, DynamoPropertyType.Other) },
-                        PkValue = item.Value.PkValue
+                        PkValue = item.Value.PkValue,
+                        PkPropertyInfo = new DynamoPropertyInfo(entityPkProperty, entityPkPropertyName?.Name ?? entityPkProperty.Name, DynamoPropertyType.Pk)
                     });
                 }
                 else
@@ -125,6 +128,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
         public string TableName { get; set; } = null!;
         public object? PkValue { get; set; }
         public DynamoPropertyInfo LinkingProperty { get; set; } = null!;
+        public DynamoPropertyInfo PkPropertyInfo { get; set; } = null!;
         public List<DynamoPropertyInfo> Properties { get; set; } = null!;
     }
 }

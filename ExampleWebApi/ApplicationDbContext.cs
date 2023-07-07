@@ -14,11 +14,15 @@ namespace ExampleWebApi
                 aWSConfiguration.SecretKey, 
                 RegionEndpoint.GetBySystemName(aWSConfiguration.Region));
 
+            Authors = new DynamoSet<Author>(this, "");
+            Books = new DynamoSet<Book>(this, "");
             Employees = new DynamoSet<Employee>(this, dynamoDbTablesConfiguration.Employees);
-            SingleTable = new DynamoSet<SingleTable>(this, dynamoDbTablesConfiguration.SingleTable);
+            SingleTable = new DynamoSet<SingleTable>(this, dynamoDbTablesConfiguration.SingleTable);            
         }
 
         public DynamoSet<Employee> Employees { get; set; }
         public DynamoSet<SingleTable> SingleTable { get; set; }
+        public DynamoSet<Author> Authors { get; set; }
+        public DynamoSet<Book> Books { get; set; }
     }
 }

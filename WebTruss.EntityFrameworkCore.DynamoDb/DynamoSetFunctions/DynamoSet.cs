@@ -177,5 +177,21 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             }
             return data;
         }
+
+        private T AppendValues(T entity, Dictionary<string, AttributeValue> values, List<DynamoPropertyInfo> properties)
+        {
+            foreach (var value in values)
+            {
+                var property = properties.Where(x => x.Name == value.Key).FirstOrDefault();
+                if (property == null)
+                {
+                    continue;
+                }
+
+                var attributeValue = ExtractValueFromAttributeValue(property, value.Value);
+                property.Property.SetValue(entity, attributeValue);
+            }
+            return entity;
+        }
     }
 }
