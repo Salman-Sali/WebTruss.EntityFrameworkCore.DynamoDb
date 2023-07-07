@@ -14,8 +14,8 @@ namespace ExampleWebApi
                 aWSConfiguration.SecretKey, 
                 RegionEndpoint.GetBySystemName(aWSConfiguration.Region));
 
-            Authors = new DynamoSet<Author>(this, "");
-            Books = new DynamoSet<Book>(this, "");
+            Authors = new DynamoSet<Author>(this, dynamoDbTablesConfiguration.Authors);
+            Books = new DynamoSet<Book>(this, dynamoDbTablesConfiguration.Books);
             Employees = new DynamoSet<Employee>(this, dynamoDbTablesConfiguration.Employees);
             SingleTable = new DynamoSet<SingleTable>(this, dynamoDbTablesConfiguration.SingleTable);            
         }

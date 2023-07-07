@@ -86,17 +86,20 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                     throw new Exception($"Linking attribute {item.Value.LinkingAttributeName} not found.");
                 }
 
-                var link = LinkedEntities.Where(x => x.LinkingProperty.Name == item.Value.LinkingAttributeName).FirstOrDefault();
+                var link = LinkedEntities.Where(x => x.LinkingName == item.Value.LinkingAttributeName).FirstOrDefault();
                 if (link == null)
                 {
                     var entityPkProperty = item.Value.EntityType.GetProperties().Where(x=> x.GetCustomAttribute<Pk>() != null).First();
                     var entityPkPropertyName = entityPkProperty.GetCustomAttribute<DynamoPropertyName>();
+
+                    var entitySkProperty = item.Value.EntityType.GetProperties().Where(x => x.GetCustomAttribute<Sk>() != null).FirstOrDefault();
+                    var entitySkPropertyName = entitySkProperty?.GetCustomAttribute<DynamoPropertyName>() ?? null;
                     LinkedEntities.Add(new DynamoEntityLink
                     {
                         TableName = context.GetTableName(item.Value.EntityType),
-                        LinkingProperty = linkingPropertyInfo,
                         Properties = new List<DynamoPropertyInfo> { new DynamoPropertyInfo(item.Key, item.Value.AttributeName ?? item.Key.Name, DynamoPropertyType.Other) },
                         PkValue = item.Value.PkValue,
+                        LinkingName = item.Value.LinkingAttributeName,
                         PkPropertyInfo = new DynamoPropertyInfo(entityPkProperty, entityPkPropertyName?.Name ?? entityPkProperty.Name, DynamoPropertyType.Pk)
                     });
                 }
@@ -126,9 +129,10 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
     public class DynamoEntityLink
     {
         public string TableName { get; set; } = null!;
+        public string LinkingName { get; set; } = null!;
         public object? PkValue { get; set; }
-        public DynamoPropertyInfo LinkingProperty { get; set; } = null!;
         public DynamoPropertyInfo PkPropertyInfo { get; set; } = null!;
+        public DynamoPropertyInfo? SkPropertyInfo { get; set; } = null!;
         public List<DynamoPropertyInfo> Properties { get; set; } = null!;
     }
 }

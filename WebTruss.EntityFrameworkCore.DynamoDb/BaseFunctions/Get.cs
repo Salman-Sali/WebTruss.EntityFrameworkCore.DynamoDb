@@ -6,13 +6,14 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.BaseFunctions
 {
     public static partial class Get
     {
-        public static async Task<Dictionary<string, AttributeValue>?> GetByKeysAsync(Dictionary<string, AttributeValue> keys, string projection, string tableName, AmazonDynamoDBClient client)
+        public static async Task<Dictionary<string, AttributeValue>?> GetByKeysAsync(Dictionary<string, AttributeValue> keys, string projection, string tableName, AmazonDynamoDBClient client, Dictionary<string, string>? expressionAttributeNames = null)
         {
             var request = new GetItemRequest
             {
                 TableName = tableName,
                 Key = keys,
                 ProjectionExpression = string.IsNullOrEmpty(projection) ? null : projection,
+                ExpressionAttributeNames = expressionAttributeNames
             };
 
             var response = await client.GetItemAsync(request);
