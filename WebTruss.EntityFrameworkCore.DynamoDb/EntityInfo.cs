@@ -11,7 +11,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             TableName = tableName;
             Properties = new List<DynamoPropertyInfo>();
             LinkedEntities = new List<DynamoEntityLink>();
-            Dictionary<PropertyInfo, DynamoLink> toBeLinked = new();
+            toBeLinked = new();
             foreach (var property in type.GetProperties())
             {
                 var dynoIgnoreAttribute = property.GetCustomAttribute<DynamoIgnore>();
@@ -55,13 +55,9 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             {
                 throw new Exception("Provided entity does not have a property marked with pk attribute.");
             }
-
-            if (toBeLinked.Any())
-            {
-                Link(toBeLinked, context);
-            }
         }
 
+        private Dictionary<PropertyInfo, DynamoLink> toBeLinked;
         public string TableName { get; set; } = null!;
         public List<DynamoPropertyInfo> Properties { get; set; } = null!;
         public List<DynamoEntityLink> LinkedEntities { get; set; } = null!;
@@ -76,8 +72,13 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
             return Properties.Where(x => x.DynamoPropertyType == DynamoPropertyType.Sk).FirstOrDefault();
         }
 
-        private void Link(Dictionary<PropertyInfo, DynamoLink> toBeLinked, DynamoDbContext context)
+        internal void Link(DynamoDbContext context)
         {
+            if (!toBeLinked.Any())
+            {
+                return;
+            }
+
             foreach (var item in toBeLinked)
             {
                 var linkingPropertyInfo = Properties.Where(x=> x.Name == item.Value.LinkingAttributeName).FirstOrDefault();
@@ -100,7 +101,8 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                         Properties = new List<DynamoPropertyInfo> { new DynamoPropertyInfo(item.Key, item.Value.AttributeName ?? item.Key.Name, DynamoPropertyType.Other) },
                         PkValue = item.Value.PkValue,
                         LinkingName = item.Value.LinkingAttributeName,
-                        PkPropertyInfo = new DynamoPropertyInfo(entityPkProperty, entityPkPropertyName?.Name ?? entityPkProperty.Name, DynamoPropertyType.Pk)
+                        PkPropertyInfo = new DynamoPropertyInfo(entityPkProperty, entityPkPropertyName?.Name ?? entityPkProperty.Name, DynamoPropertyType.Pk),
+                        SkPropertyInfo = entitySkProperty == null ? null : new DynamoPropertyInfo(entitySkProperty, entitySkPropertyName.Name ?? entitySkProperty.Name, DynamoPropertyType.Sk)
                     });
                 }
                 else
@@ -109,6 +111,8 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                 }
 
             }
+
+            toBeLinked = new();
         }
     }
 

@@ -17,5 +17,10 @@ namespace ExampleWebApi.Models
 
         [DynamoLink("AuthorId", typeof(Author), "Description")]
         public string AuthorDescription { get; set; } = null!;
+
+        public string? PublisherId { get; set; }
+
+        [DynamoLink("Publisher", nameof(Book.PublisherId), typeof(SingleTable), "Name")]
+        public string? PublisherName { get; set; }
     }
 }

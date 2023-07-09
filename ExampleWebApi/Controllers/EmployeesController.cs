@@ -40,7 +40,8 @@ namespace ExampleWebApi.Controllers
         [HttpDelete]
         public async Task<IActionResult> Delete(string id)
         {
-            await context.Employees.ExecuteDeleteAsync(id);
+            var data = await context.Employees.FirstOrDefaultAsync(id);
+            await context.Employees.ExecuteDeleteAsync(data);
             return Ok();
         }
 

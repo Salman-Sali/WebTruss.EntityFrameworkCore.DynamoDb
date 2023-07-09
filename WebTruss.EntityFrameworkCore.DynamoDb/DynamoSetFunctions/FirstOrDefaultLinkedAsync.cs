@@ -1,5 +1,6 @@
 ﻿using Amazon.DynamoDBv2.Model;
 using Amazon.Runtime.Internal.Transform;
+using Newtonsoft.Json.Linq;
 using WebTruss.EntityFrameworkCore.DynamoDb.BaseFunctions;
 using Get = WebTruss.EntityFrameworkCore.DynamoDb.BaseFunctions.Get;
 
@@ -9,6 +10,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
     {
         public async Task<T?> FirstOrDefaultLinkedAsync<Pid>(Pid pk)
         {
+            entityInfo.Link(context);
             var values = await Get.GetByKeysAsync(PkDictionary(pk), string.Empty, entityInfo.TableName, context.Client);
             if (values == null)
             {
@@ -16,7 +18,30 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             }
 
             var result = DictionaryToEntity(values);
+            return await GetLinkedForFirstOrDefault(values, result);
+        }
 
+        public async Task<T?> FirstOrDefaultLinkedAsync<Pid, Sid>(Pid pk, Sid sk)
+        {
+            var keys = new Dictionary<string, AttributeValue>();
+            var skDictionary = SkDictionary(sk).First();
+            var pkDictionary = PkDictionary(pk).First();
+            keys.Add(pkDictionary.Key, pkDictionary.Value);
+            keys.Add(skDictionary.Key, skDictionary.Value);
+
+            var values = await Get.GetByKeysAsync(keys, string.Empty, entityInfo.TableName, context.Client);
+            if (values == null)
+            {
+                return null;
+            }
+
+            var result = DictionaryToEntity(values);
+            return await GetLinkedForFirstOrDefault(values, result);
+        }
+
+        private async Task<T> GetLinkedForFirstOrDefault(Dictionary<string, AttributeValue> values, T result)
+        {
+            entityInfo.Link(context);
             foreach (var entity in entityInfo.LinkedEntities)
             {
                 var entityValues = new Dictionary<string, AttributeValue>();
@@ -57,9 +82,9 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
                     var pkDictionary = GetPropertyDictionary(entity.PkPropertyInfo, entity.PkValue).First();
                     keys.Add(pkDictionary.Key, pkDictionary.Value);
 
-                    var skDictionary = new Dictionary<string, AttributeValue> 
+                    var skDictionary = new Dictionary<string, AttributeValue>
                     {
-                        { entity.SkPropertyInfo.Name, linkedValue.Value.Value }
+                        { entity.SkPropertyInfo!.Name, linkedValue.Value.Value }
                     }.First();
                     keys.Add(skDictionary.Key, skDictionary.Value);
                 }
@@ -78,13 +103,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
                     result = AppendValues(result, entityValues, entity.Properties);
                 }
             }
-
             return result;
         }
-
-        //public async Task FirstOrDefaultLinkedAsync<Pid, Sid>(Pid pk, Sid sk)
-        //{
-
-        //}
     }
 }

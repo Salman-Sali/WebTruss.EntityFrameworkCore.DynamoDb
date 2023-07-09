@@ -8,8 +8,16 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
     {
         public async Task<bool> ExecuteDeleteAsync<Pid>(Pid pk, CancellationToken cancellationToken = default)
         {
-            var pkProperty = PkDictionary(pk);
-            var result = await Delete.DeleteAsync(pkProperty, entityInfo.TableName, context.Client, cancellationToken);
+            var keys = new Dictionary<string, AttributeValue>();
+            if(typeof(T) == typeof(Pid))
+            {
+                keys = KeyDictionary((pk as T)!);
+            }
+            else
+            {
+                keys = PkDictionary(pk);
+            }
+            var result = await Delete.DeleteAsync(keys, entityInfo.TableName, context.Client, cancellationToken);
             return result.HttpStatusCode == System.Net.HttpStatusCode.OK;
         }
 
@@ -20,13 +28,6 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             var pkDictionary = PkDictionary(pk).First();
             keys.Add(pkDictionary.Key, pkDictionary.Value);
             keys.Add(skDictionary.Key, skDictionary.Value);
-            var result = await Delete.DeleteAsync(keys, entityInfo.TableName, context.Client, cancellationToken);
-            return result.HttpStatusCode == System.Net.HttpStatusCode.OK;
-        }
-
-        public async Task<bool> ExecuteDeleteAysnc(T entity, CancellationToken cancellationToken = default)
-        {
-            var keys = KeyDictionary(entity);
             var result = await Delete.DeleteAsync(keys, entityInfo.TableName, context.Client, cancellationToken);
             return result.HttpStatusCode == System.Net.HttpStatusCode.OK;
         }
