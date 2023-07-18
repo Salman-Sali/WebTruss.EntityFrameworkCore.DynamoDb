@@ -2,7 +2,9 @@
 using Amazon.Runtime.Internal.Transform;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Reflection;
 using System.Runtime.Serialization;
 
 namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
@@ -13,6 +15,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
         private EntityInfo entityInfo;
 
         private static List<Type> numericTypes = new List<Type> { typeof(int), typeof(long), typeof(double), typeof(float) };
+        private static List<Type> stringTypes = new List<Type> { typeof(string), typeof(Enum), typeof(Guid), typeof(DateTime), typeof(TimeOnly), typeof(DateOnly) };
 
         public DynamoSet(DynamoDbContext context, string tableName)
         {
@@ -79,33 +82,57 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             }
 
             var propertyType = dynamoProperty.Property.PropertyType;
-            if (numericTypes.Contains(propertyType))
+            return new Dictionary<string, AttributeValue>
             {
-                return new Dictionary<string, AttributeValue>
-                {
-                    { dynamoProperty.Name, new AttributeValue { N = value!.ToString() } }
-                };
+                { dynamoProperty.Name, GetAttributeValue(dynamoProperty.Property.PropertyType, value) }
+            };
+        }
+
+        private AttributeValue GetAttributeValue(Type type, object value)
+        {
+            if (numericTypes.Contains(type))
+            {
+                return new AttributeValue { N = value!.ToString() };
             }
-            else if (propertyType == typeof(bool))
+            else if (type == typeof(bool))
             {
-                return new Dictionary<string, AttributeValue>
-                {
-                    { dynamoProperty.Name, new AttributeValue { BOOL = (bool)value } }
-                };
+                return new AttributeValue { BOOL = (bool)value };
             }
-            else if (propertyType == typeof(List<string>))
+            else if (type == typeof(List<string>))
             {
-                return new Dictionary<string, AttributeValue>
+                return new AttributeValue { SS = (List<string>)value };
+            }
+            else if (stringTypes.Contains(type))
+            {
+                return new AttributeValue { S = value!.ToString() };
+            }
+            else if (type.IsClass)
+            {
+                if (type.Namespace == typeof(List<>).Namespace)
                 {
-                    { dynamoProperty.Name, new AttributeValue { SS = (List<string>)value } }
-                };
+                    var list = new List<AttributeValue>();
+                    var listType = type.GetGenericArguments()[0];
+                    MethodInfo toArrayMethod = type.GetMethod("ToArray");
+                    Array array = (Array)toArrayMethod.Invoke(value, null);
+                    foreach (object item in array)
+                    {
+                        list.Add(GetAttributeValue(listType, item));
+                    }
+                    return new AttributeValue { L = list };
+                }
+                else
+                {
+                    var mappings = new Dictionary<string, AttributeValue>();
+                    foreach (var prop in type.GetProperties())
+                    {
+                        mappings.Add(prop.Name, GetAttributeValue(prop.PropertyType, prop.GetValue(value)));
+                    }
+                    return new AttributeValue { M = mappings };
+                }
             }
             else
             {
-                return new Dictionary<string, AttributeValue>
-                {
-                    { dynamoProperty.Name, new AttributeValue { S = value!.ToString() } }
-                };
+                return new AttributeValue { S = value!.ToString() };
             }
         }
 

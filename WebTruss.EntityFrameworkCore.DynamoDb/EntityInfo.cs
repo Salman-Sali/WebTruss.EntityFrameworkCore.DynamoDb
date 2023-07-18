@@ -40,6 +40,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb
                 {
                     dynamoPropertyType = DynamoPropertyType.Other;
                 }
+
                 var dynamoPropertyNameAttribute = property.GetCustomAttribute<DynamoPropertyName>();
                 if (dynamoPropertyNameAttribute == null)
                 {

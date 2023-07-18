@@ -12,5 +12,20 @@ namespace ExampleWebApi.Models
 
         [DynamoPropertyName("Description")]
         public string? Desc { get; set; } = null!;
+
+        public List<EducationEntry>? Education { get; set; }
+        public Address? Address { get; set; }
+    }
+
+    public class EducationEntry
+    {
+        public string University { get; set; } = null!;
+        public string Course { get; set; } = null!;
+    }
+
+    public class Address
+    {
+        public string Street { get; set; } = null!;
+        public string City { get; set; } = null!;
     }
 }
