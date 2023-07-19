@@ -150,9 +150,8 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             return dictionary;
         }
 
-        private object? ExtractValueFromAttributeValue(DynamoPropertyInfo propertyInfo, AttributeValue attributeValue)
+        private object? ExtractValueFromAttributeValue(Type type, AttributeValue attributeValue)
         {
-            var type = propertyInfo.Property.PropertyType;
             if (type == typeof(string))
             {
                 return attributeValue.S;
@@ -181,6 +180,37 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             {
                 return TimeOnly.Parse(attributeValue.S);
             }
+            else if (type.IsClass)
+            {
+                if (type.Namespace == typeof(List<>).Namespace)
+                {
+                    var listType = type.GetGenericArguments()[0];
+                    var result = Activator.CreateInstance(type);
+                    foreach (var attribute in attributeValue.L)
+                    {
+                        var value = ExtractValueFromAttributeValue(listType, attribute);
+                        MethodInfo? addMethod = type.GetMethod("Add");
+                        if (addMethod != null)
+                        {
+                            addMethod.Invoke(result, new object[] { value });
+                        }
+                    }
+                    return result;
+                }
+                else
+                {
+                    var result = Activator.CreateInstance(type);
+                    foreach (var attributeDictionary in attributeValue.M)
+                    {
+                        var property = type.GetProperty(attributeDictionary.Key);
+                        if (property != null)
+                        {
+                            property.SetValue(result, ExtractValueFromAttributeValue(property.PropertyType, attributeDictionary.Value));
+                        }
+                    }
+                    return result;
+                }
+            }
             else
             {
                 var converter = TypeDescriptor.GetConverter(type);
@@ -199,7 +229,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
                     continue;
                 }
 
-                var value = ExtractValueFromAttributeValue(property, item.Value);
+                var value = ExtractValueFromAttributeValue(property.Property.PropertyType, item.Value);
                 property.Property.SetValue(data, value);
             }
             return data;
@@ -215,7 +245,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
                     continue;
                 }
 
-                var attributeValue = ExtractValueFromAttributeValue(property, value.Value);
+                var attributeValue = ExtractValueFromAttributeValue(property.Property.PropertyType, value.Value);
                 property.Property.SetValue(entity, attributeValue);
             }
             return entity;
