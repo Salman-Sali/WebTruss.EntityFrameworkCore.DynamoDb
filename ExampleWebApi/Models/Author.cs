@@ -27,5 +27,18 @@ namespace ExampleWebApi.Models
     {
         public string Street { get; set; } = null!;
         public string City { get; set; } = null!;
+        public CountryInformation? Country { get; set; }
+        public List<AddressPostOffices>? PostOffices { get; set; }//just random stuff to test out
+    }
+
+    public class CountryInformation
+    {
+        public string Country { get; set; } = null!;
+        public string Code { get; set; } = null!;
+    }
+
+    public class AddressPostOffices
+    {
+        public string PostOfficeName { get; set; } = null!;
     }
 }
