@@ -74,7 +74,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             }
         }
 
-        private Dictionary<string, AttributeValue> GetPropertyDictionary(DynamoPropertyInfo dynamoProperty, object? value)
+        private Dictionary<string, AttributeValue>? GetPropertyDictionary(DynamoPropertyInfo dynamoProperty, object? value)
         {
             if (value == null)
             {
@@ -82,10 +82,15 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             }
 
             var propertyType = dynamoProperty.Property.PropertyType;
-            return new Dictionary<string, AttributeValue>
+            var attributeValue = GetAttributeValue(dynamoProperty.Property.PropertyType, value);
+            if (attributeValue != null)
             {
-                { dynamoProperty.Name, GetAttributeValue(dynamoProperty.Property.PropertyType, value) }
-            };
+                return new Dictionary<string, AttributeValue>
+                {
+                    { dynamoProperty.Name, attributeValue }
+                };
+            }
+            return null;
         }
 
         private AttributeValue? GetAttributeValue(Type type, object? value)
@@ -115,6 +120,13 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             {
                 if (type.Namespace == typeof(List<>).Namespace)
                 {
+                    var countMethod = type.GetMethod("get_Count");
+                    var count = (int)countMethod.Invoke(value, null);
+                    if (count == 0)
+                    {
+                        return null;
+                    }
+
                     var list = new List<AttributeValue>();
                     var listType = type.GetGenericArguments()[0];
                     MethodInfo toArrayMethod = type.GetMethod("ToArray");
@@ -126,6 +138,11 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
                         {
                             list.Add(dict);
                         }
+                    }
+
+                    if (list.Count == 0)
+                    {
+                        return null;
                     }
                     return new AttributeValue { L = list };
                 }
@@ -155,7 +172,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             foreach (var property in entityInfo.Properties)
             {
                 var propertyDictionary = GetPropertyDictionary(property, property.Property.GetValue(entity));
-                if (propertyDictionary.Count != 0)
+                if (propertyDictionary != null && propertyDictionary.Count != 0)
                 {
                     dictionary.Add(propertyDictionary.First().Key, propertyDictionary.First().Value);
                 }
