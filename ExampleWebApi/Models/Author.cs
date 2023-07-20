@@ -19,7 +19,7 @@ namespace ExampleWebApi.Models
 
     public class EducationEntry
     {
-        public string University { get; set; } = null!;
+        public string? University { get; set; } = null!;
         public string Course { get; set; } = null!;
     }
 

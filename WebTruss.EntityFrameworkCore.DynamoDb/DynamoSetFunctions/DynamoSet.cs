@@ -88,8 +88,13 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             };
         }
 
-        private AttributeValue GetAttributeValue(Type type, object value)
+        private AttributeValue? GetAttributeValue(Type type, object? value)
         {
+            if (value == null)
+            {
+                return null;
+            }
+
             if (numericTypes.Contains(type))
             {
                 return new AttributeValue { N = value!.ToString() };
@@ -104,7 +109,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             }
             else if (stringTypes.Contains(type))
             {
-                return new AttributeValue { S = value!.ToString() };
+                return new AttributeValue { S = value.ToString() };
             }
             else if (type.IsClass)
             {
@@ -114,9 +119,13 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
                     var listType = type.GetGenericArguments()[0];
                     MethodInfo toArrayMethod = type.GetMethod("ToArray");
                     Array array = (Array)toArrayMethod.Invoke(value, null);
-                    foreach (object item in array)
+                    foreach (object? item in array)
                     {
-                        list.Add(GetAttributeValue(listType, item));
+                        var dict = GetAttributeValue(listType, item);
+                        if (dict != null)
+                        {
+                            list.Add(dict);
+                        }
                     }
                     return new AttributeValue { L = list };
                 }
@@ -125,7 +134,11 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
                     var mappings = new Dictionary<string, AttributeValue>();
                     foreach (var prop in type.GetProperties())
                     {
-                        mappings.Add(prop.Name, GetAttributeValue(prop.PropertyType, prop.GetValue(value)));
+                        var dict = GetAttributeValue(prop.PropertyType, prop.GetValue(value));
+                        if (dict != null)
+                        {
+                            mappings.Add(prop.Name, dict);
+                        }
                     }
                     return new AttributeValue { M = mappings };
                 }
