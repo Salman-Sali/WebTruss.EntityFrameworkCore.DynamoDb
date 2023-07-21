@@ -190,6 +190,10 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             {
                 return int.Parse(attributeValue.N);
             }
+            else if(type == typeof(float))
+            {
+                return float.Parse(attributeValue.N);
+            }
             else if (type == typeof(bool))
             {
                 return attributeValue.BOOL;
