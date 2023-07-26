@@ -48,7 +48,7 @@ namespace ExampleWebApi.Controllers
         [HttpGet("List")]
         public async Task<IActionResult> List(string? token)
         {
-            return this.Ok(await context.Employees.ScannedListAsync(1, token));
+            return this.Ok(await context.Employees.ScannedListAsync(3, token));
         }
     }
 }

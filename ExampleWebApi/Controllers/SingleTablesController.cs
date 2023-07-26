@@ -26,9 +26,9 @@ namespace ExampleWebApi.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> Get()
+        public async Task<IActionResult> Get(string? token, bool reverse)
         {
-            return Ok(await context.SingleTable.PagedListAsync("1", 10, null));
+            return Ok(await context.SingleTable.PagedListAsync("1", 5, token, reverse));
         }
 
         [HttpDelete]

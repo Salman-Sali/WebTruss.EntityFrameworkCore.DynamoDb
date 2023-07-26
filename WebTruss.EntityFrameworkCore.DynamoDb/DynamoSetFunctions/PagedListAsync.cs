@@ -10,7 +10,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
         /// <br> PagedList behaves differently from ScannedList. </br>
         /// <br> The last page will return null token when there are no more pages left. </br>
         /// </summary>
-        public async Task<PaginatedResult<T>> PagedListAsync<Pid>(Pid pk, int limit, string? token)
+        public async Task<PaginatedResult<T>> PagedListAsync<Pid>(Pid pk, int limit, string? token, bool reverse = false)
         {
             var skProperty = entityInfo.Sk();
             if (skProperty == null)
@@ -38,7 +38,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             var request = new QueryRequest
             {
                 TableName = entityInfo.TableName,
-                ScanIndexForward = paginationToken?.Forward ?? true,
+                ScanIndexForward = (paginationToken?.Forward ?? true) && !reverse ,
                 KeyConditionExpression = $"{pkProperty.Name} = :v_Id",
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
