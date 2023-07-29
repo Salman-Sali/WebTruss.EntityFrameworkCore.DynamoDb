@@ -110,7 +110,12 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             }
             else if (type == typeof(List<string>))
             {
-                return new AttributeValue { SS = (List<string>)value };
+                var list = (List<string>)value;
+                if (list.Count == 0)
+                {
+                    return null;
+                }
+                return new AttributeValue { SS = list };
             }
             else if (stringTypes.Contains(type))
             {
@@ -190,7 +195,7 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             {
                 return int.Parse(attributeValue.N);
             }
-            else if(type == typeof(float))
+            else if (type == typeof(float))
             {
                 return float.Parse(attributeValue.N);
             }

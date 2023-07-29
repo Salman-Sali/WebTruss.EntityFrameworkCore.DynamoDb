@@ -17,7 +17,7 @@ namespace ExampleWebApi
             Authors = new DynamoSet<Author>(this, dynamoDbTablesConfiguration.Authors);
             Books = new DynamoSet<Book>(this, dynamoDbTablesConfiguration.Books);
             Employees = new DynamoSet<Employee>(this, dynamoDbTablesConfiguration.Employees);
-            SingleTable = new DynamoSet<SingleTable>(this, dynamoDbTablesConfiguration.SingleTable);            
+            SingleTable = new DynamoSet<SingleTable>(this, dynamoDbTablesConfiguration.SingleTable);
         }
 
         public DynamoSet<Employee> Employees { get; set; }
