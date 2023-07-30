@@ -191,13 +191,10 @@ namespace WebTruss.EntityFrameworkCore.DynamoDb.DynamoSetFunctions
             {
                 return attributeValue.S;
             }
-            else if (type == typeof(int))
+            else if (numericTypes.Contains(type))
             {
-                return int.Parse(attributeValue.N);
-            }
-            else if (type == typeof(float))
-            {
-                return float.Parse(attributeValue.N);
+                var converter = TypeDescriptor.GetConverter(type);
+                return converter.ConvertFromString(attributeValue.N);
             }
             else if (type == typeof(bool))
             {
